@@ -1,60 +1,56 @@
-import React, { useState } from 'react';
-import LandingPage from './components/LandingPage';
+import React, { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
+import Auth from './components/Auth';
 import AdminDashboard from './components/AdminDashboard';
-import { Ticket, LayoutDashboard, Sparkles } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 export default function App() {
-  const [view, setView] = useState('landing'); // 'landing' or 'admin'
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('eventora_theme') || 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('eventora_theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    // Fetch active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    // Listen to authentication changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="app-loading-screen">
+        <RefreshCw className="spinner text-blue" size={32} />
+        <p>Connecting to Eventora...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="app-layout">
-      {/* Top Navigation Bar */}
-      <nav className="navbar glass-panel">
-        <div className="container nav-container">
-          <div className="nav-logo" onClick={() => setView('landing')}>
-            <Sparkles className="icon-cyan logo-sparkle" size={20} />
-            <span className="logo-text text-gradient">EVENTORA</span>
-          </div>
-          
-          <div className="nav-links">
-            <button 
-              onClick={() => setView('landing')} 
-              className={`nav-link-btn ${view === 'landing' ? 'nav-active-landing' : ''}`}
-            >
-              <Ticket size={18} />
-              <span>Get Passes</span>
-            </button>
-            <button 
-              onClick={() => setView('admin')} 
-              className={`nav-link-btn ${view === 'admin' ? 'nav-active-admin' : ''}`}
-            >
-              <LayoutDashboard size={18} />
-              <span>Dashboard</span>
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content Area */}
-      <main className="main-content container">
-        {view === 'landing' ? (
-          <LandingPage />
-        ) : (
-          <AdminDashboard />
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="footer border-glow">
-        <div className="container footer-content">
-          <p>© 2026 Eventora Inc. All rights reserved.</p>
-          <div className="footer-links">
-            <span>Privacy Policy</span>
-            <span>•</span>
-            <span>Terms of Service</span>
-          </div>
-        </div>
-      </footer>
+    <div className="app-root">
+      {!session ? (
+        <Auth theme={theme} toggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')} />
+      ) : (
+        <AdminDashboard session={session} theme={theme} toggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')} />
+      )}
     </div>
   );
 }
