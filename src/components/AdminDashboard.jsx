@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import UserProfile from './UserProfile';
 import { 
   Users, CheckCircle, Search, Filter, Plus, Download, 
   Trash2, X, RefreshCw, AlertCircle, FileSpreadsheet, Key, Calendar, 
   MapPin, LogOut, User as UserIcon, Copy, Check, Users2, Shield, Settings,
-  Sparkles, Sun, Moon
+  Sparkles, Sun, Moon, Banknote, CreditCard, Image, ExternalLink, Upload
 } from 'lucide-react';
 
 export default function AdminDashboard({ session, theme, toggleTheme }) {
@@ -54,6 +54,15 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
   const [guestAmount, setGuestAmount] = useState('0');
   const [addGuestLoading, setAddGuestLoading] = useState(false);
   const [addGuestError, setAddGuestError] = useState('');
+
+  // Payment method state
+  const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'online'
+  const [paymentScreenshot, setPaymentScreenshot] = useState(null); // File object
+  const [paymentScreenshotPreview, setPaymentScreenshotPreview] = useState(null);
+  const screenshotInputRef = useRef(null);
+
+  // View screenshot modal
+  const [viewScreenshotUrl, setViewScreenshotUrl] = useState(null);
   // Pass types state
   const [passTypes, setPassTypes] = useState([]);
   const [guestPassTypeId, setGuestPassTypeId] = useState(null);
@@ -414,6 +423,11 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
       return;
     }
 
+    if (paymentMethod === 'online' && !paymentScreenshot) {
+      setAddGuestError('Please upload a payment screenshot for online payments.');
+      return;
+    }
+
     setAddGuestLoading(true);
     try {
       const randStr = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -429,6 +443,22 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
         ticketTypeToInsert = guestType.trim();
       }
 
+      // Upload screenshot if online payment
+      let screenshotUrl = null;
+      if (paymentMethod === 'online' && paymentScreenshot) {
+        const fileExt = paymentScreenshot.name.split('.').pop();
+        const filePath = `${selectedParty.id}/${ticketCode}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('payment-screenshots')
+          .upload(filePath, paymentScreenshot, { upsert: true });
+        if (uploadError) throw new Error('Screenshot upload failed: ' + uploadError.message);
+
+        const { data: urlData } = supabase.storage
+          .from('payment-screenshots')
+          .getPublicUrl(filePath);
+        screenshotUrl = urlData.publicUrl;
+      }
+
       const insertObj = {
         party_id: selectedParty.id,
         added_by: currentUser.id,
@@ -437,7 +467,9 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
         ticket_type: ticketTypeToInsert,
         amount_paid: parsedAmount,
         ticket_code: ticketCode,
-        checked_in: false
+        checked_in: false,
+        payment_method: paymentMethod,
+        payment_screenshot_url: screenshotUrl
       };
       if (guestPassTypeId) insertObj.pass_type_id = guestPassTypeId;
 
@@ -452,6 +484,9 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
       setGuestType('Non-Alcoholic');
       setGuestAmount('50');
       setGuestPassTypeId(null);
+      setPaymentMethod('cash');
+      setPaymentScreenshot(null);
+      setPaymentScreenshotPreview(null);
       setShowAddGuestModal(false);
       fetchGuests();
     } catch (err) {
@@ -1009,6 +1044,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                               <th>Attendee</th>
                               <th>Tier / Code</th>
                               <th>Amount (₹)</th>
+                              <th>Payment</th>
                               <th>Added By</th>
                               <th>Added At</th>
                               <th>Status</th>
@@ -1048,6 +1084,31 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                                     <span className="guest-amount font-semibold text-success">
                                       ₹{parseFloat(guest.amount_paid).toFixed(2)}
                                     </span>
+                                  </td>
+                                  <td>
+                                    <div className="payment-method-cell" style={{display:'flex',flexDirection:'row',gap:'5px',alignItems:'center',flexWrap:'wrap'}}>
+                                      {guest.payment_method === 'online' ? (
+                                        <>
+                                          <span className="badge badge-cyan" style={{display:'inline-flex',alignItems:'center',gap:'4px'}}>
+                                            <CreditCard size={11} /> Online
+                                          </span>
+                                          {guest.payment_screenshot_url && (
+                                            <span
+                                              className="badge badge-pink"
+                                              style={{cursor:'pointer'}}
+                                              onClick={() => setViewScreenshotUrl(guest.payment_screenshot_url)}
+                                              title="View payment screenshot"
+                                            >
+                                              <Image size={11} /> View
+                                            </span>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <span className="badge badge-neutral" style={{display:'inline-flex',alignItems:'center',gap:'4px'}}>
+                                          <Banknote size={11} /> Cash
+                                        </span>
+                                      )}
+                                    </div>
                                   </td>
                                   <td>
                                     {guest.added_by ? (
@@ -1369,7 +1430,13 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
           <div className="modal-content glass-panel">
             <div className="modal-header">
               <h3>Register Guest Pass</h3>
-              <button onClick={() => setShowAddGuestModal(false)} className="btn-close-modal">
+              <button onClick={() => {
+                setShowAddGuestModal(false);
+                setPaymentMethod('cash');
+                setPaymentScreenshot(null);
+                setPaymentScreenshotPreview(null);
+                setAddGuestError('');
+              }} className="btn-close-modal">
                 <X size={18} />
               </button>
             </div>
@@ -1418,8 +1485,108 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                 />
                 <span className="input-tip">* Change the amount for the specific pass tier or custom pricing.</span>
               </div>
+
+              {/* Payment Method */}
+              <div className="form-group">
+                <label>Payment Method</label>
+                <div style={{display:'flex', gap:'10px', marginTop:'4px'}}>
+                  <button
+                    type="button"
+                    className={`btn ${paymentMethod === 'cash' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}
+                    onClick={() => {
+                      setPaymentMethod('cash');
+                      setPaymentScreenshot(null);
+                      setPaymentScreenshotPreview(null);
+                    }}
+                  >
+                    <Banknote size={15} /> Cash
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${paymentMethod === 'online' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}
+                    onClick={() => setPaymentMethod('online')}
+                  >
+                    <CreditCard size={15} /> Online
+                  </button>
+                </div>
+              </div>
+
+              {/* Screenshot upload — only for online */}
+              {paymentMethod === 'online' && (
+                <div className="form-group">
+                  <label>Payment Screenshot <span style={{color:'var(--color-danger)'}}>*</span></label>
+                  <div
+                    className="screenshot-upload-area"
+                    onClick={() => screenshotInputRef.current?.click()}
+                    style={{
+                      border: '2px dashed var(--border-color)',
+                      borderRadius: '10px',
+                      padding: '16px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.2s'
+                    }}
+                  >
+                    {paymentScreenshotPreview ? (
+                      <div style={{position:'relative'}}>
+                        <img
+                          src={paymentScreenshotPreview}
+                          alt="Payment screenshot preview"
+                          style={{maxWidth:'100%', maxHeight:'160px', borderRadius:'8px', objectFit:'contain'}}
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPaymentScreenshot(null);
+                            setPaymentScreenshotPreview(null);
+                          }}
+                          style={{
+                            position:'absolute', top:'-8px', right:'-8px',
+                            background:'var(--color-danger)', border:'none', borderRadius:'50%',
+                            width:'22px', height:'22px', cursor:'pointer', color:'#fff',
+                            display:'flex', alignItems:'center', justifyContent:'center'
+                          }}
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'6px', color:'var(--text-muted)'}}>
+                        <Upload size={24} />
+                        <span style={{fontSize:'13px'}}>Click to upload screenshot</span>
+                        <span style={{fontSize:'11px'}}>PNG, JPG, WEBP supported</span>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={screenshotInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/jpg"
+                    style={{display:'none'}}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setPaymentScreenshot(file);
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setPaymentScreenshotPreview(ev.target.result);
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  <span className="input-tip">* Upload the UPI / bank transfer screenshot as proof of payment.</span>
+                </div>
+              )}
+
               <div className="modal-footer-actions">
-                <button type="button" onClick={() => setShowAddGuestModal(false)} className="btn btn-secondary">
+                <button type="button" onClick={() => {
+                  setShowAddGuestModal(false);
+                  setPaymentMethod('cash');
+                  setPaymentScreenshot(null);
+                  setPaymentScreenshotPreview(null);
+                  setAddGuestError('');
+                }} className="btn btn-secondary">
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={addGuestLoading}>
@@ -1427,6 +1594,42 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: View Payment Screenshot */}
+      {viewScreenshotUrl && (
+        <div className="modal-overlay" onClick={() => setViewScreenshotUrl(null)}>
+          <div
+            className="modal-content glass-panel"
+            style={{maxWidth:'600px', width:'90%'}}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3>Payment Screenshot</h3>
+              <button onClick={() => setViewScreenshotUrl(null)} className="btn-close-modal">
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{padding:'16px', textAlign:'center'}}>
+              <img
+                src={viewScreenshotUrl}
+                alt="Payment screenshot"
+                style={{maxWidth:'100%', maxHeight:'70vh', borderRadius:'10px', objectFit:'contain'}}
+              />
+              <div style={{marginTop:'12px'}}>
+                <a
+                  href={viewScreenshotUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary"
+                  style={{display:'inline-flex', alignItems:'center', gap:'6px'}}
+                >
+                  <ExternalLink size={14} /> Open in new tab
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}
