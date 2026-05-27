@@ -1351,7 +1351,8 @@ button, .btn {
 .panel-header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .btn-sm-text {
@@ -1979,6 +1980,108 @@ button, .btn {
 }
 
 /* Responsive Dashboard updates */
+/* ── Hamburger button — hidden on desktop ── */
+.hamburger-btn {
+  display: none;
+}
+
+/* ── Mobile Drawer ── */
+.mobile-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.mobile-drawer {
+  width: min(300px, 85vw);
+  height: 100dvh;
+  overflow-y: auto;
+  border-radius: 0 16px 16px 0;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: drawer-in 0.22s ease;
+}
+
+@keyframes drawer-in {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+.mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.mobile-drawer-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.mobile-drawer-section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-light);
+  padding: 10px 8px 4px;
+}
+
+.mobile-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.mobile-drawer-item:hover {
+  background: var(--bg-hover);
+}
+
+.mobile-drawer-item-active {
+  background: var(--accent-bg, rgba(99,102,241,0.12));
+  color: var(--accent, #818cf8);
+  font-weight: 600;
+}
+
+.mobile-drawer-item-danger {
+  color: var(--danger, #ef4444);
+}
+
+.mobile-drawer-item-danger:hover {
+  background: rgba(239,68,68,0.1);
+}
+
+.mobile-drawer-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 8px 0;
+}
+
 @media (max-width: 1024px) {
   .dash-body-grid {
     grid-template-columns: 1fr;
@@ -2005,6 +2108,18 @@ button, .btn {
 }
 
 @media (max-width: 768px) {
+  .hamburger-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+  }
+
+  /* Hide the desktop sidebar on mobile — drawer replaces it */
+  .sidebar {
+    display: none !important;
+  }
+
   .navbar-container {
     padding: 0 16px;
   }
@@ -2039,6 +2154,7 @@ button, .btn {
   
   .panel-header-actions button {
     flex: 1;
+    min-width: 0;
   }
 
   .filters-bar {

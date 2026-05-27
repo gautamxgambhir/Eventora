@@ -75,6 +75,9 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
   const [activeTab, setActiveTab] = useState('Overview');
   const [copied, setCopied] = useState(false);
 
+  // Mobile hamburger menu
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   // ── Toast notifications ──────────────────────────────────────────────────
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
@@ -627,15 +630,50 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
     await supabase.auth.signOut();
   };
 
+  const handleLeaveParty = () => {
+    showConfirm(
+      `Leave "${selectedParty.name}"? You will lose access unless you rejoin with the access code.`,
+      async () => {
+        try {
+          const { error } = await supabase
+            .from('party_admins')
+            .delete()
+            .eq('party_id', selectedParty.id)
+            .eq('user_id', currentUser.id);
+          if (error) throw error;
+          localStorage.removeItem('eventora_active_party_id');
+          fetchUserParties();
+        } catch (err) {
+          console.error('Error leaving party:', err);
+          showToast('Failed to leave party: ' + err.message);
+        }
+      }
+    );
+  };
+
   return (
     <div className="admin-layout-wrapper">
       
       {/* Top Navbar */}
       <nav className="dash-navbar glass-panel">
         <div className="navbar-container">
-          <div className="navbar-logo" onClick={() => setShowProfileView(false)}>
-            <Sparkles className="icon-blue" size={20} />
-            <span className="logo-text text-gradient">EVENTORA</span>
+          <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+            {/* Hamburger — mobile only */}
+            <button
+              className="btn btn-secondary hamburger-btn"
+              onClick={() => setMobileMenuOpen(true)}
+              title="Menu"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <rect y="2" width="18" height="2" rx="1" fill="currentColor"/>
+                <rect y="8" width="18" height="2" rx="1" fill="currentColor"/>
+                <rect y="14" width="18" height="2" rx="1" fill="currentColor"/>
+              </svg>
+            </button>
+            <div className="navbar-logo" onClick={() => setShowProfileView(false)}>
+              <Sparkles className="icon-blue" size={20} />
+              <span className="logo-text text-gradient">EVENTORA</span>
+            </div>
           </div>
           
           <div className="navbar-user-controls">
@@ -671,6 +709,51 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
           </div>
         </div>
       </nav>
+
+      {/* Mobile Drawer Menu */}
+      {mobileMenuOpen && (
+        <div className="mobile-drawer-overlay" onClick={() => setMobileMenuOpen(false)}>
+          <div className="mobile-drawer glass-panel" onClick={e => e.stopPropagation()}>
+            <div className="mobile-drawer-header">
+              <span className="mobile-drawer-title">
+                <Sparkles className="icon-blue" size={16} /> Menu
+              </span>
+              <button className="btn-close-modal" onClick={() => setMobileMenuOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {selectedParty && (
+              <>
+                <div className="mobile-drawer-section-label">Navigation</div>
+                {['Overview', 'Party Info', 'Admins', 'Passes', 'Settings'].map(tab => (
+                  <button
+                    key={tab}
+                    className={`mobile-drawer-item ${activeTab === tab ? 'mobile-drawer-item-active' : ''}`}
+                    onClick={() => { setActiveTab(tab); setMobileMenuOpen(false); }}
+                  >
+                    {tab}
+                  </button>
+                ))}
+                <div className="mobile-drawer-divider" />
+              </>
+            )}
+
+            <div className="mobile-drawer-section-label">Party</div>
+            <button className="mobile-drawer-item" onClick={() => { setShowJoinPartyModal(true); setMobileMenuOpen(false); }}>
+              <Key size={15} /> Join with Code
+            </button>
+            <button className="mobile-drawer-item" onClick={() => { setShowCreatePartyModal(true); setMobileMenuOpen(false); }}>
+              <Plus size={15} /> Create Party
+            </button>
+            {selectedParty && (
+              <button className="mobile-drawer-item mobile-drawer-item-danger" onClick={() => { handleLeaveParty(); setMobileMenuOpen(false); }}>
+                <LogOut size={15} /> Leave Party
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Main Body */}
       {showProfileView ? (
@@ -776,6 +859,12 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                 <Plus size={14} />
                 <span>Create Party</span>
               </button>
+              {selectedParty && (
+                <button onClick={handleLeaveParty} className="btn btn-danger btn-full">
+                  <LogOut size={14} />
+                  <span>Leave Party</span>
+                </button>
+              )}
             </div>
           </aside>
 
@@ -974,15 +1063,15 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                     <div className="panel-header">
                       <h2 className="panel-title">Guest Pass Holders</h2>
                       <div className="panel-header-actions">
-                        <button onClick={handleExportCSV} className="btn btn-secondary btn-sm-text" title="Export CSV">
+                        <button onClick={handleExportCSV} className="btn btn-secondary" title="Export CSV">
                           <Download size={14} />
                           <span>Export CSV</span>
                         </button>
-                        <button type="button" className="btn btn-secondary btn-sm-text" onClick={() => setShowManagePassTypesModal(true)} title="Manage pass types">
+                        <button type="button" className="btn btn-secondary" onClick={() => setShowManagePassTypesModal(true)} title="Manage pass types">
                           <Settings size={14} />
                           <span>Manage Types</span>
                         </button>
-                        <button onClick={() => setShowAddGuestModal(true)} className="btn btn-primary btn-sm-text">
+                        <button onClick={() => setShowAddGuestModal(true)} className="btn btn-primary">
                           <Plus size={14} />
                           <span>Add Guest</span>
                         </button>

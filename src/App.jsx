@@ -11,9 +11,9 @@ export default function App() {
   const [theme, setTheme] = useState(() => {
     try {
       const stored = localStorage.getItem('eventora_theme');
-      return stored === 'dark' ? 'dark' : 'light';
+      return stored ? stored : 'dark';
     } catch {
-      return 'light';
+      return 'dark';
     }
   });
 
