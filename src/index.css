@@ -107,6 +107,24 @@ body {
   --admitted-bg: rgba(34,197,94,0.06); /* subtle green in dark */
 }
 
+:root[data-theme='dark'] .navbar-user-name,
+:root[data-theme='dark'] .user-profile-badge-btn,
+:root[data-theme='dark'] .user-profile-badge-btn:hover,
+:root[data-theme='dark'] .profile-badge-btn-active {
+  color: var(--text-main);
+}
+
+:root[data-theme='dark'] .user-profile-badge-btn {
+  background: #18181b;
+  border-color: #3f3f46;
+}
+
+:root[data-theme='dark'] .user-profile-badge-btn:hover,
+:root[data-theme='dark'] .profile-badge-btn-active {
+  background: var(--bg-hover);
+  border-color: var(--border-color);
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   font-weight: 700;
@@ -163,7 +181,7 @@ h1, h2, h3, h4, h5, h6 {
 
 :root[data-theme='dark'] .btn-secondary {
   background: var(--bg-white);
-  color: var(--text-muted);
+  color: var(--text-main);
   border-color: var(--border-color);
 }
 :root[data-theme='dark'] .btn-secondary:hover {
@@ -234,6 +252,15 @@ button, .btn {
   background: var(--bg-hover);
   border-color: #cbd5e1;
   color: var(--text-main);
+}
+
+:root[data-theme='dark'] .btn-secondary {
+  color: var(--text-main) !important;
+}
+
+:root[data-theme='dark'] .btn-theme-toggle,
+:root[data-theme='dark'] .btn-toggle-auth {
+  color: var(--text-main) !important;
 }
 
 .btn-danger {
@@ -434,8 +461,27 @@ button, .btn {
 }
 
 .auth-header {
+  position: relative;
   text-align: center;
   margin-bottom: 32px;
+}
+
+.auth-theme-toggle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.auth-theme-toggle:hover {
+  opacity: 0.85;
 }
 
 .auth-logo {
@@ -454,6 +500,13 @@ button, .btn {
 .auth-subtitle {
   font-size: 0.9rem;
   color: var(--text-muted);
+}
+
+:root[data-theme='dark'] .auth-subtitle,
+:root[data-theme='dark'] .auth-divider-line,
+:root[data-theme='dark'] .btn-toggle-auth,
+:root[data-theme='dark'] .auth-theme-toggle {
+  color: var(--text-main);
 }
 
 .auth-form {
