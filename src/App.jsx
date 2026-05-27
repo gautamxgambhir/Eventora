@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+
 import { supabase } from './supabaseClient';
 import Auth from './components/Auth';
 import AdminDashboard from './components/AdminDashboard';
@@ -9,16 +10,21 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(() => {
     try {
-      return localStorage.getItem('eventora_theme') || 'light';
+      const stored = localStorage.getItem('eventora_theme');
+      return stored === 'dark' ? 'dark' : 'light';
     } catch {
       return 'light';
     }
   });
 
   useEffect(() => {
+    // Set theme on mount + whenever it changes.
+    // (Keeps React lint happy; avoids direct DOM mutation during render.)
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('eventora_theme', theme);
   }, [theme]);
+
+
 
   useEffect(() => {
     // Fetch active session

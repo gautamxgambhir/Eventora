@@ -38,6 +38,12 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
   const [newPartyLoc, setNewPartyLoc] = useState('');
   const [createPartyLoading, setCreatePartyLoading] = useState(false);
 
+  const [showEditPartyModal, setShowEditPartyModal] = useState(false);
+  const [editPartyName, setEditPartyName] = useState('');
+  const [editPartyDate, setEditPartyDate] = useState('');
+  const [editPartyLoc, setEditPartyLoc] = useState('');
+  const [editPartyLoading, setEditPartyLoading] = useState(false);
+
   const [showJoinPartyModal, setShowJoinPartyModal] = useState(false);
   const [joinAccessCode, setJoinAccessCode] = useState('');
   const [joinPartyLoading, setJoinPartyLoading] = useState(false);
@@ -306,6 +312,42 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
       alert('Failed to create party: ' + err.message);
     } finally {
       setCreatePartyLoading(false);
+    }
+  };
+
+  // Edit party details
+  const handleEditParty = async (e) => {
+    e.preventDefault();
+    if (!editPartyName.trim() || !editPartyDate) return;
+
+    setEditPartyLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('parties')
+        .update({
+          name: editPartyName.trim(),
+          date: editPartyDate,
+          location: editPartyLoc.trim(),
+        })
+        .eq('id', selectedParty.id)
+        .select();
+
+      if (error) throw error;
+
+      const updatedParty = { ...selectedParty, ...data[0] };
+      
+      // Update selectedParty state
+      setSelectedParty(updatedParty);
+
+      // Update parties list state
+      setParties(prev => prev.map(p => p.id === selectedParty.id ? updatedParty : p));
+
+      setShowEditPartyModal(false);
+    } catch (err) {
+      console.error('Error updating party:', err);
+      alert('Failed to update party info: ' + err.message);
+    } finally {
+      setEditPartyLoading(false);
     }
   };
 
@@ -827,6 +869,22 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                       </div>
                     </div>
                     <p className="section-note">Organizers can choose pass types and prices while registering guests in the Passes tab. You can also change event details from the party settings area.</p>
+                    {selectedParty.role === 'Organizer' && (
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary" 
+                        onClick={() => {
+                          setEditPartyName(selectedParty.name);
+                          setEditPartyDate(selectedParty.date);
+                          setEditPartyLoc(selectedParty.location || '');
+                          setShowEditPartyModal(true);
+                        }}
+                        style={{ marginTop: '20px' }}
+                      >
+                        <Settings size={16} />
+                        Edit Party Info
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -952,6 +1010,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                               <th>Tier / Code</th>
                               <th>Amount (₹)</th>
                               <th>Added By</th>
+                              <th>Added At</th>
                               <th>Status</th>
                               <th>Actions</th>
                             </tr>
@@ -1004,6 +1063,18 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                                     ) : (
                                       <span className="text-muted text-xs">System</span>
                                     )}
+                                  </td>
+                                  <td>
+                                    <span className="guest-date-cell">
+                                      {guest.created_at 
+                                        ? new Date(guest.created_at).toLocaleString(undefined, {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                          })
+                                        : 'N/A'}
+                                    </span>
                                   </td>
                                   <td>
                                     {guest.checked_in ? (
@@ -1195,6 +1266,59 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={createPartyLoading}>
                   {createPartyLoading ? 'Creating...' : 'Create Party'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Party Details */}
+      {showEditPartyModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel">
+            <div className="modal-header">
+              <h3>Edit Party Details</h3>
+              <button onClick={() => setShowEditPartyModal(false)} className="btn-close-modal">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleEditParty} className="modal-form">
+              <div className="form-group">
+                <label>Party Name</label>
+                <input 
+                  type="text" 
+                  className="form-input"
+                  value={editPartyName}
+                  onChange={(e) => setEditPartyName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Date</label>
+                <input 
+                  type="date" 
+                  className="form-input"
+                  value={editPartyDate}
+                  onChange={(e) => setEditPartyDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Location / Venue</label>
+                <input 
+                  type="text" 
+                  className="form-input"
+                  value={editPartyLoc}
+                  onChange={(e) => setEditPartyLoc(e.target.value)}
+                />
+              </div>
+              <div className="modal-footer-actions">
+                <button type="button" onClick={() => setShowEditPartyModal(false)} className="btn btn-secondary">
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={editPartyLoading}>
+                  {editPartyLoading ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

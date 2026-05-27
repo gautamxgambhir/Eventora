@@ -462,6 +462,32 @@ button, .btn {
   gap: 16px;
 }
 
+/* Auth mode switch animation */
+.auth-mode-panel {
+  will-change: transform, opacity;
+  transform-origin: top center;
+}
+
+.auth-mode-panel-signin {
+  animation: authModeIn 220ms ease-out;
+}
+
+.auth-mode-panel-signup {
+  animation: authModeIn 220ms ease-out;
+}
+
+@keyframes authModeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
 .btn-auth {
   margin-top: 8px;
   height: 44px;
