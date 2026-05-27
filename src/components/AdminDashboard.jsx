@@ -651,6 +651,27 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
     );
   };
 
+  const handleDeleteParty = () => {
+    showConfirm(
+      `Permanently delete "${selectedParty.name}"? This will remove all guests, passes, and data for this event. This cannot be undone.`,
+      async () => {
+        try {
+          const { error } = await supabase
+            .from('parties')
+            .delete()
+            .eq('id', selectedParty.id);
+          if (error) throw error;
+          localStorage.removeItem('eventora_active_party_id');
+          fetchUserParties();
+          showToast(`"${selectedParty.name}" has been deleted.`, 'success');
+        } catch (err) {
+          console.error('Error deleting party:', err);
+          showToast('Failed to delete party: ' + err.message);
+        }
+      }
+    );
+  };
+
   return (
     <div className="admin-layout-wrapper">
       
@@ -749,6 +770,11 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
             {selectedParty && (
               <button className="mobile-drawer-item mobile-drawer-item-danger" onClick={() => { handleLeaveParty(); setMobileMenuOpen(false); }}>
                 <LogOut size={15} /> Leave Party
+              </button>
+            )}
+            {selectedParty?.role === 'Organizer' && (
+              <button className="mobile-drawer-item mobile-drawer-item-danger" onClick={() => { handleDeleteParty(); setMobileMenuOpen(false); }}>
+                <Trash2 size={15} /> Delete Party
               </button>
             )}
           </div>
@@ -1307,6 +1333,24 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                         <p className="section-note">Organizers can set pass type and enter rupee pricing per guest. There is no dollar pricing anywhere in this workspace.</p>
                       </div>
                     </div>
+
+                    {selectedParty.role === 'Organizer' && (
+                      <div className="danger-zone-card">
+                        <div className="danger-zone-header">
+                          <AlertCircle size={16} className="icon-danger" />
+                          <span>Danger Zone</span>
+                        </div>
+                        <div className="danger-zone-body">
+                          <div>
+                            <strong>Delete this party</strong>
+                            <p className="section-note" style={{marginTop:'2px'}}>Permanently removes all guests, passes, and data for this event. This cannot be undone.</p>
+                          </div>
+                          <button onClick={handleDeleteParty} className="btn btn-danger" style={{flexShrink:0}}>
+                            <Trash2 size={14} /> Delete Party
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
