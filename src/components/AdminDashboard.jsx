@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import UserProfile from './UserProfile';
 import { 
   Users, CheckCircle, Search, Filter, Plus, Download, 
   Trash2, X, RefreshCw, AlertCircle, FileSpreadsheet, Key, Calendar, 
   MapPin, LogOut, User as UserIcon, Copy, Check, Users2, Shield, Settings,
-  Sparkles, Sun, Moon, Banknote, CreditCard, Image, ExternalLink, Upload
+  Sparkles, Sun, Moon, Banknote, CreditCard, Image, ExternalLink, Upload,
+  Info, AlertTriangle
 } from 'lucide-react';
 
 export default function AdminDashboard({ session, theme, toggleTheme }) {
@@ -74,6 +75,24 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
   const [activeTab, setActiveTab] = useState('Overview');
   const [copied, setCopied] = useState(false);
 
+  // ── Toast notifications ──────────────────────────────────────────────────
+  const [toasts, setToasts] = useState([]);
+  const toastIdRef = useRef(0);
+
+  const showToast = useCallback((message, type = 'error') => {
+    const id = ++toastIdRef.current;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+  }, []);
+
+  // ── Confirm dialog ───────────────────────────────────────────────────────
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  // confirmDialog: { message, onConfirm }
+
+  const showConfirm = useCallback((message, onConfirm) => {
+    setConfirmDialog({ message, onConfirm });
+  }, []);
+
   // Fetch logged in user profile
   useEffect(() => {
     fetchUserProfile();
@@ -128,20 +147,21 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
       fetchPassTypes();
     } catch (err) {
       console.error('Error creating pass type:', err);
-      alert('Failed to create pass type: ' + err.message);
+      showToast('Failed to create pass type: ' + err.message);
     }
   };
 
   const handleDeletePassType = async (id) => {
-    if (!window.confirm('Delete this pass option? Existing passes will keep their recorded price.')) return;
-    try {
-      const { error } = await supabase.from('pass_types').delete().eq('id', id);
-      if (error) throw error;
-      fetchPassTypes();
-    } catch (err) {
-      console.error('Error deleting pass type:', err);
-      alert('Failed to delete pass type.');
-    }
+    showConfirm('Delete this pass option? Existing passes will keep their recorded price.', async () => {
+      try {
+        const { error } = await supabase.from('pass_types').delete().eq('id', id);
+        if (error) throw error;
+        fetchPassTypes();
+      } catch (err) {
+        console.error('Error deleting pass type:', err);
+        showToast('Failed to delete pass type.');
+      }
+    });
   };
 
   const fetchUserProfile = async () => {
@@ -249,29 +269,23 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
       if (error) throw error;
     } catch (err) {
       console.error('Error updating check-in:', err);
-      alert('Failed to update check-in status.');
+      showToast('Failed to update check-in status.');
       fetchGuests();
     }
   };
 
   // Delete/refund guest pass
   const handleDeleteGuest = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete the pass for ${name}?`)) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('passes')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      setGuests(prev => prev.filter(g => g.id !== id));
-    } catch (err) {
-      console.error('Error deleting guest:', err);
-      alert('Failed to delete guest pass.');
-    }
+    showConfirm(`Are you sure you want to delete the pass for ${name}?`, async () => {
+      try {
+        const { error } = await supabase.from('passes').delete().eq('id', id);
+        if (error) throw error;
+        setGuests(prev => prev.filter(g => g.id !== id));
+      } catch (err) {
+        console.error('Error deleting guest:', err);
+        showToast('Failed to delete guest pass.');
+      }
+    });
   };
 
   // Create new party
@@ -318,7 +332,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
       fetchUserParties(createdParty.id);
     } catch (err) {
       console.error('Error creating party:', err);
-      alert('Failed to create party: ' + err.message);
+      showToast('Failed to create party: ' + err.message);
     } finally {
       setCreatePartyLoading(false);
     }
@@ -354,7 +368,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
       setShowEditPartyModal(false);
     } catch (err) {
       console.error('Error updating party:', err);
-      alert('Failed to update party info: ' + err.message);
+      showToast('Failed to update party info: ' + err.message);
     } finally {
       setEditPartyLoading(false);
     }
@@ -378,7 +392,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
       if (partyError) throw partyError;
       
       if (!partyData || partyData.length === 0) {
-        alert('Invalid access code. Please double-check.');
+        showToast('Invalid access code. Please double-check.', 'warning');
         setJoinPartyLoading(false);
         return;
       }
@@ -405,7 +419,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
       fetchUserParties(partyToJoin.id);
     } catch (err) {
       console.error('Error joining party:', err);
-      alert('Failed to join party: ' + err.message);
+      showToast('Failed to join party: ' + err.message);
     } finally {
       setJoinPartyLoading(false);
     }
@@ -1633,6 +1647,75 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
           </div>
         </div>
       )}
+
+      {/* ── Confirm Dialog ─────────────────────────────────────────────── */}
+      {confirmDialog && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel" style={{maxWidth:'380px'}}>
+            <div className="modal-header" style={{borderBottom:'none', paddingBottom:0, marginBottom:0}}>
+              <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                <div style={{
+                  width:'36px', height:'36px', borderRadius:'50%',
+                  background:'rgba(239,68,68,0.15)', display:'flex',
+                  alignItems:'center', justifyContent:'center', flexShrink:0
+                }}>
+                  <AlertTriangle size={18} style={{color:'var(--color-danger, #ef4444)'}} />
+                </div>
+                <h3 style={{fontSize:'1rem', fontWeight:700}}>Confirm Action</h3>
+              </div>
+              <button onClick={() => setConfirmDialog(null)} className="btn-close-modal">
+                <X size={18} />
+              </button>
+            </div>
+            <p style={{
+              padding:'16px 0 20px',
+              color:'var(--text-light)',
+              fontSize:'0.9rem',
+              lineHeight:'1.5'
+            }}>
+              {confirmDialog.message}
+            </p>
+            <div className="modal-footer-actions" style={{paddingTop:'12px'}}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setConfirmDialog(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => {
+                  confirmDialog.onConfirm();
+                  setConfirmDialog(null);
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Toast Notifications ────────────────────────────────────────── */}
+      <div className="toast-container">
+        {toasts.map(toast => (
+          <div key={toast.id} className={`toast toast-${toast.type}`}>
+            <div className="toast-icon">
+              {toast.type === 'error' && <AlertCircle size={16} />}
+              {toast.type === 'warning' && <AlertTriangle size={16} />}
+              {toast.type === 'success' && <CheckCircle size={16} />}
+              {toast.type === 'info' && <Info size={16} />}
+            </div>
+            <span className="toast-message">{toast.message}</span>
+            <button
+              className="toast-close"
+              onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
 
     </div>
   );
