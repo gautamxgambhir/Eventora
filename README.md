@@ -6,7 +6,7 @@
 
 Add guests, track payments, manage check-ins — all in one clean dashboard.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black?style=flat-square&logo=vercel)](https://eventora.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black?style=flat-square&logo=vercel)](https://evntora.vercel.app)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
 [![Supabase](https://img.shields.io/badge/Supabase-Backend-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
@@ -239,7 +239,7 @@ App runs at `http://localhost:5173`.
    - `VITE_SUPABASE_ANON_KEY`
 4. Deploy — `vercel.json` handles the SPA routing rewrite automatically
 
-> **Supabase Auth redirect** — after deploying, add your Vercel URL (e.g. `https://eventora.vercel.app`) to **Supabase → Authentication → URL Configuration → Redirect URLs**.
+> **Supabase Auth redirect** — after deploying, add your Vercel URL (e.g. `https://evntora.vercel.app`) to **Supabase → Authentication → URL Configuration → Redirect URLs**.
 
 ---
 
