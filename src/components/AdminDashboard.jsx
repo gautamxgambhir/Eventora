@@ -72,7 +72,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
   const [newPassPrice, setNewPassPrice] = useState('0');
   const [passTypesLoading, setPassTypesLoading] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [activeTab, setActiveTab] = useState('Passes');
   const [copied, setCopied] = useState(false);
 
   // Mobile hamburger menu
@@ -800,7 +800,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                         const next = parties.find(p => p.id === e.target.value);
                         if (next) {
                           setSelectedParty(next);
-                          setActiveTab('Overview');
+                          setActiveTab('Passes');
                         }
                       }}
                     >
@@ -834,7 +834,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                     key={party.id}
                     onClick={() => {
                       setSelectedParty(party);
-                      setActiveTab('Overview');
+                      setActiveTab('Passes');
                     }}
                     className={`sidebar-party-btn ${selectedParty?.id === party.id ? 'party-btn-active' : ''}`}
                   >
