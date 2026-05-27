@@ -446,60 +446,117 @@ button, .btn {
 
 /* ------------------- Auth Screen ------------------- */
 .auth-wrapper {
+  position: relative;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 24px;
   background-color: var(--bg-light);
+  overflow: hidden;
+}
+
+.auth-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.12), transparent 24%),
+              radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.1), transparent 28%);
+  pointer-events: none;
 }
 
 .auth-card {
-  width: 100%;
-  max-width: 440px;
+  width: min(100%, 440px);
   padding: 40px;
+  position: relative;
+  z-index: 1;
+  animation: authCardIn 320ms ease-out;
 }
 
 .auth-header {
-  position: relative;
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
 .auth-theme-toggle {
   position: absolute;
-  right: 0;
-  top: 0;
-  border: none;
-  background: transparent;
+  top: 18px;
+  right: 18px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-white);
+  border-radius: 999px;
   color: var(--text-main);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
+  gap: 8px;
+  padding: 10px 14px;
+  z-index: 2;
+  transition: var(--transition);
+}
+
+:root[data-theme='dark'] .auth-theme-toggle {
+  background: #1f1f23;
+  border-color: #3f3f46;
+  color: var(--text-main);
 }
 
 .auth-theme-toggle:hover {
-  opacity: 0.85;
+  transform: translateY(-1px);
 }
 
 .auth-logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  display: none;
 }
 
-.auth-logo .logo-text {
+.auth-header .logo-text {
   font-size: 2rem;
   font-weight: 900;
+  letter-spacing: -0.05em;
+  color: var(--text-main);
 }
 
 .auth-subtitle {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--text-muted);
+  margin-top: 8px;
+}
+
+@keyframes authCardIn {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 520px) {
+  .auth-wrapper {
+    padding: 16px;
+  }
+
+  .auth-card {
+    padding: 28px;
+  }
+
+  .auth-theme-toggle {
+    top: 12px;
+    right: 12px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+  }
+
+  .auth-header .logo-text {
+    font-size: 1.75rem;
+  }
+
+  .auth-card {
+    width: 100%;
+  }
 }
 
 :root[data-theme='dark'] .auth-subtitle,

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Sparkles, Mail, Lock, LogIn, UserPlus, Globe, Moon, Sun } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, Globe, Moon, Sun } from 'lucide-react';
 
 export default function Auth({ theme, toggleTheme }) {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -58,23 +58,18 @@ export default function Auth({ theme, toggleTheme }) {
 
   return (
     <div className="auth-wrapper">
+      <button
+        onClick={toggleTheme}
+        className="auth-theme-toggle"
+        title="Toggle theme"
+        type="button"
+      >
+        {isDark ? <Sun size={18} /> : <Moon size={18} />}
+        <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
+      </button>
       <div className="auth-card glass-panel">
         <div className="auth-header">
-          <div className="auth-topbar">
-            <div className="auth-logo">
-              <Sparkles className="icon-blue" size={24} />
-              <h1 className="logo-text text-gradient">EVENTORA</h1>
-            </div>
-            <button
-              onClick={toggleTheme}
-              className="btn btn-secondary btn-theme-toggle auth-theme-toggle"
-              title="Toggle theme"
-              type="button"
-            >
-              {isDark ? <Sun size={16} /> : <Moon size={16} />}
-              <span>{isDark ? 'Light' : 'Dark'}</span>
-            </button>
-          </div>
+          <h1 className="logo-text">EVENTORA</h1>
           <p className="auth-subtitle">
             {isSignUp ? 'Create your organizer account' : 'Sign in to manage your party passes'}
           </p>
