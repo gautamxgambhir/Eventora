@@ -73,6 +73,10 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
   const [editGuestPassTypeId, setEditGuestPassTypeId] = useState(null);
   const [editGuestLoading, setEditGuestLoading] = useState(false);
   const [editGuestError, setEditGuestError] = useState('');
+  const [editPaymentMethod, setEditPaymentMethod] = useState('cash');
+  const [editPaymentScreenshot, setEditPaymentScreenshot] = useState(null);
+  const [editPaymentScreenshotPreview, setEditPaymentScreenshotPreview] = useState(null);
+  const editScreenshotInputRef = useRef(null);
 
   // Activity log / history
   const [activityLog, setActivityLog] = useState([]);
@@ -353,6 +357,9 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
     setEditGuestName(guest.name);
     setEditGuestAmount(String(guest.amount_paid));
     setEditGuestPassTypeId(guest.pass_type_id || null);
+    setEditPaymentMethod(guest.payment_method || 'cash');
+    setEditPaymentScreenshot(null);
+    setEditPaymentScreenshotPreview(null);
     setEditGuestError('');
     setShowEditGuestModal(true);
   };
@@ -365,6 +372,13 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
     const parsedAmount = parseFloat(editGuestAmount);
     if (isNaN(parsedAmount) || parsedAmount < 0) { setEditGuestError('Enter a valid amount.'); return; }
 
+    // If switching to online, a screenshot must be provided (either existing or new upload)
+    const existingScreenshot = editingGuest.payment_screenshot_url;
+    if (editPaymentMethod === 'online' && !existingScreenshot && !editPaymentScreenshot) {
+      setEditGuestError('Please upload a payment screenshot for online payments.');
+      return;
+    }
+
     setEditGuestLoading(true);
     try {
       let ticketTypeToUpdate = 'Custom';
@@ -373,11 +387,33 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
         if (sel) ticketTypeToUpdate = sel.name;
       }
 
+      // Handle screenshot changes
+      let screenshotUrl = editingGuest.payment_screenshot_url || null;
+
+      if (editPaymentMethod === 'cash') {
+        // Switching to cash — clear screenshot
+        screenshotUrl = null;
+      } else if (editPaymentMethod === 'online' && editPaymentScreenshot) {
+        // New file uploaded — upload to storage
+        const fileExt = editPaymentScreenshot.name.split('.').pop();
+        const filePath = `${selectedParty.id}/${editingGuest.ticket_code}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('payment-screenshots')
+          .upload(filePath, editPaymentScreenshot, { upsert: true });
+        if (uploadError) throw new Error('Screenshot upload failed: ' + uploadError.message);
+        const { data: urlData } = supabase.storage
+          .from('payment-screenshots')
+          .getPublicUrl(filePath);
+        screenshotUrl = urlData.publicUrl;
+      }
+
       const updateObj = {
         name: editGuestName.trim(),
         amount_paid: parsedAmount,
         ticket_type: ticketTypeToUpdate,
         pass_type_id: editGuestPassTypeId || null,
+        payment_method: editPaymentMethod,
+        payment_screenshot_url: screenshotUrl,
       };
 
       const { error } = await supabase
@@ -388,16 +424,29 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
 
       // Build a human-readable diff for the log
       const changes = [];
-      if (editingGuest.name !== editGuestName.trim()) changes.push(`name: "${editingGuest.name}" → "${editGuestName.trim()}"`);
-      if (parseFloat(editingGuest.amount_paid) !== parsedAmount) changes.push(`amount: ₹${editingGuest.amount_paid} → ₹${parsedAmount}`);
+      if (editingGuest.name !== editGuestName.trim())
+        changes.push(`name: "${editingGuest.name}" → "${editGuestName.trim()}"`);
+      if (parseFloat(editingGuest.amount_paid) !== parsedAmount)
+        changes.push(`amount: ₹${editingGuest.amount_paid} → ₹${parsedAmount}`);
       const oldType = editingGuest.pass_type?.name || 'Custom';
-      if (oldType !== ticketTypeToUpdate) changes.push(`type: "${oldType}" → "${ticketTypeToUpdate}"`);
+      if (oldType !== ticketTypeToUpdate)
+        changes.push(`type: "${oldType}" → "${ticketTypeToUpdate}"`);
+      const oldMethod = editingGuest.payment_method || 'cash';
+      if (oldMethod !== editPaymentMethod)
+        changes.push(`payment: ${oldMethod} → ${editPaymentMethod}`);
+      if (editPaymentMethod === 'online' && editPaymentScreenshot)
+        changes.push('payment screenshot updated');
+      if (oldMethod === 'online' && editPaymentMethod === 'cash')
+        changes.push('payment screenshot removed');
+
       if (changes.length > 0) {
         await logActivity('edited', `Edited pass for "${editingGuest.name}": ${changes.join(', ')}`);
       }
 
       setShowEditGuestModal(false);
       setEditingGuest(null);
+      setEditPaymentScreenshot(null);
+      setEditPaymentScreenshotPreview(null);
       fetchGuests();
       showToast('Pass updated.', 'success');
     } catch (err) {
@@ -2017,6 +2066,103 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                   required
                 />
               </div>
+
+              {/* Payment Method */}
+              <div className="form-group">
+                <label>Payment Method</label>
+                <div style={{display:'flex', gap:'10px', marginTop:'4px'}}>
+                  <button
+                    type="button"
+                    className={`btn ${editPaymentMethod === 'cash' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}
+                    onClick={() => {
+                      setEditPaymentMethod('cash');
+                      setEditPaymentScreenshot(null);
+                      setEditPaymentScreenshotPreview(null);
+                    }}
+                  >
+                    <Banknote size={15} /> Cash
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${editPaymentMethod === 'online' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}
+                    onClick={() => setEditPaymentMethod('online')}
+                  >
+                    <CreditCard size={15} /> Online
+                  </button>
+                </div>
+              </div>
+
+              {/* Screenshot section — only for online */}
+              {editPaymentMethod === 'online' && (
+                <div className="form-group">
+                  <label>Payment Screenshot</label>
+
+                  {/* Show existing screenshot if present and no new one selected */}
+                  {editingGuest.payment_screenshot_url && !editPaymentScreenshot && (
+                    <div style={{marginBottom:'8px', display:'flex', alignItems:'center', gap:'10px', padding:'8px 12px', background:'var(--bg-hover)', borderRadius:'8px'}}>
+                      <Image size={14} className="icon-blue" />
+                      <span style={{fontSize:'0.82rem', flex:1}}>Existing screenshot on file</span>
+                      <span
+                        className="badge badge-pink"
+                        style={{cursor:'pointer'}}
+                        onClick={() => setViewScreenshotUrl(editingGuest.payment_screenshot_url)}
+                      >
+                        View
+                      </span>
+                    </div>
+                  )}
+
+                  <div
+                    onClick={() => editScreenshotInputRef.current?.click()}
+                    style={{
+                      border: '2px dashed var(--border-color)',
+                      borderRadius: '10px',
+                      padding: '14px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {editPaymentScreenshotPreview ? (
+                      <div style={{position:'relative'}}>
+                        <img
+                          src={editPaymentScreenshotPreview}
+                          alt="Preview"
+                          style={{maxWidth:'100%', maxHeight:'140px', borderRadius:'8px', objectFit:'contain'}}
+                        />
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); setEditPaymentScreenshot(null); setEditPaymentScreenshotPreview(null); }}
+                          style={{position:'absolute', top:'-8px', right:'-8px', background:'var(--color-danger,#ef4444)', border:'none', borderRadius:'50%', width:'22px', height:'22px', cursor:'pointer', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center'}}
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'5px', color:'var(--text-muted)'}}>
+                        <Upload size={20} />
+                        <span style={{fontSize:'12px'}}>{editingGuest.payment_screenshot_url ? 'Upload to replace existing screenshot' : 'Click to upload screenshot'}</span>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={editScreenshotInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/jpg"
+                    style={{display:'none'}}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setEditPaymentScreenshot(file);
+                      const reader = new FileReader();
+                      reader.onload = ev => setEditPaymentScreenshotPreview(ev.target.result);
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </div>
+              )}
+
               <div className="modal-footer-actions">
                 <button type="button" onClick={() => setShowEditGuestModal(false)} className="btn btn-secondary">
                   Cancel
