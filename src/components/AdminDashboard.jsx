@@ -93,6 +93,9 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
   ]);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkError, setBulkError] = useState('');
+  const [bulkScreenshot, setBulkScreenshot] = useState(null);
+  const [bulkScreenshotPreview, setBulkScreenshotPreview] = useState(null);
+  const bulkScreenshotRef = useRef(null);
 
   // Collapsed groups in table
   const [collapsedGroups, setCollapsedGroups] = useState({});
@@ -483,6 +486,8 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
     setBulkGroupAmount('0');
     setBulkGroupPaymentMethod('cash');
     setBulkRows([{ name: '', passTypeId: null }]);
+    setBulkScreenshot(null);
+    setBulkScreenshotPreview(null);
     setBulkError('');
   };
 
@@ -494,12 +499,31 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
     if (isNaN(parsedTotal) || parsedTotal < 0) { setBulkError('Enter a valid total amount.'); return; }
     const validRows = bulkRows.filter(r => r.name.trim());
     if (validRows.length === 0) { setBulkError('Add at least one guest.'); return; }
+    if (bulkGroupPaymentMethod === 'online' && !bulkScreenshot) {
+      setBulkError('Please upload a payment screenshot for online payments.'); return;
+    }
 
     // Split total evenly across guests
     const perPassAmount = validRows.length > 0 ? parseFloat((parsedTotal / validRows.length).toFixed(2)) : 0;
 
     setBulkLoading(true);
     try {
+      // Upload group screenshot once if online
+      let groupScreenshotUrl = null;
+      if (bulkGroupPaymentMethod === 'online' && bulkScreenshot) {
+        const fileExt = bulkScreenshot.name.split('.').pop();
+        const groupRef = `group-${bulkGroupName.trim().replace(/\s+/g,'-')}-${Date.now()}`;
+        const filePath = `${selectedParty.id}/${groupRef}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('payment-screenshots')
+          .upload(filePath, bulkScreenshot, { upsert: true });
+        if (uploadError) throw new Error('Screenshot upload failed: ' + uploadError.message);
+        const { data: urlData } = supabase.storage
+          .from('payment-screenshots')
+          .getPublicUrl(filePath);
+        groupScreenshotUrl = urlData.publicUrl;
+      }
+
       const inserts = validRows.map(r => {
         const randStr = Math.random().toString(36).substring(2, 8).toUpperCase();
         const ticketCode = `EVT-${randStr}`;
@@ -519,7 +543,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
           ticket_code: ticketCode,
           checked_in: false,
           payment_method: bulkGroupPaymentMethod,
-          payment_screenshot_url: null,
+          payment_screenshot_url: groupScreenshotUrl,
           group_name: bulkGroupName.trim(),
           group_color: bulkGroupColor,
         };
@@ -2199,7 +2223,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                       type="button"
                       className={`btn ${bulkGroupPaymentMethod === 'cash' ? 'btn-primary' : 'btn-secondary'}`}
                       style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'5px'}}
-                      onClick={() => setBulkGroupPaymentMethod('cash')}
+                      onClick={() => { setBulkGroupPaymentMethod('cash'); setBulkScreenshot(null); setBulkScreenshotPreview(null); }}
                     >
                       <Banknote size={14}/> Cash
                     </button>
@@ -2233,6 +2257,50 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                   </div>
                 </div>
               </div>
+
+              {/* Screenshot upload — only for online */}
+              {bulkGroupPaymentMethod === 'online' && (
+                <div className="form-group">
+                  <label>Payment Screenshot <span style={{color:'var(--color-danger,#ef4444)'}}>*</span></label>
+                  <div
+                    onClick={() => bulkScreenshotRef.current?.click()}
+                    style={{border:'2px dashed var(--border-color)', borderRadius:'10px', padding:'14px', textAlign:'center', cursor:'pointer'}}
+                  >
+                    {bulkScreenshotPreview ? (
+                      <div style={{position:'relative'}}>
+                        <img src={bulkScreenshotPreview} alt="Preview" style={{maxWidth:'100%', maxHeight:'130px', borderRadius:'8px', objectFit:'contain'}} />
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); setBulkScreenshot(null); setBulkScreenshotPreview(null); }}
+                          style={{position:'absolute', top:'-8px', right:'-8px', background:'var(--color-danger,#ef4444)', border:'none', borderRadius:'50%', width:'22px', height:'22px', cursor:'pointer', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center'}}
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'5px', color:'var(--text-muted)'}}>
+                        <Upload size={20} />
+                        <span style={{fontSize:'12px'}}>Click to upload payment screenshot</span>
+                        <span style={{fontSize:'11px'}}>PNG, JPG, WEBP supported</span>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={bulkScreenshotRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/jpg"
+                    style={{display:'none'}}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setBulkScreenshot(file);
+                      const reader = new FileReader();
+                      reader.onload = ev => setBulkScreenshotPreview(ev.target.result);
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </div>
+              )}
 
               {/* Guest rows — name + pass type only */}
               <div className="bulk-rows-container">
