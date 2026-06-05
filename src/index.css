@@ -2337,3 +2337,97 @@ button, .btn {
 :root[data-theme='light'] .toast-info { background: #eef2ff; border-color: #c7d2fe; color: #3730a3; }
 :root[data-theme='light'] .toast-info .toast-icon { color: #6366f1; }
 :root[data-theme='light'] .toast-info .toast-close { color: #3730a3; }
+
+/* ------------------- History / Activity Log ------------------- */
+.history-panel {
+  padding: 24px;
+}
+
+.activity-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 16px;
+}
+
+.activity-log-item {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+}
+
+.activity-log-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.activity-icon-added {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.activity-icon-edited {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+
+.activity-icon-deleted {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.activity-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-description {
+  font-size: 0.88rem;
+  color: var(--text-main);
+  line-height: 1.45;
+  margin: 0 0 4px;
+}
+
+.activity-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.activity-user {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.activity-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.activity-time {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  color: var(--text-light);
+}

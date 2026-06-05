@@ -6,7 +6,7 @@ import {
   Trash2, X, RefreshCw, AlertCircle, FileSpreadsheet, Key, Calendar, 
   MapPin, LogOut, User as UserIcon, Copy, Check, Users2, Shield, Settings,
   Sparkles, Sun, Moon, Banknote, CreditCard, Image, ExternalLink, Upload,
-  Info, AlertTriangle
+  Info, AlertTriangle, Pencil, Clock, History
 } from 'lucide-react';
 
 export default function AdminDashboard({ session, theme, toggleTheme }) {
@@ -64,6 +64,19 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
 
   // View screenshot modal
   const [viewScreenshotUrl, setViewScreenshotUrl] = useState(null);
+
+  // Edit guest modal
+  const [showEditGuestModal, setShowEditGuestModal] = useState(false);
+  const [editingGuest, setEditingGuest] = useState(null);
+  const [editGuestName, setEditGuestName] = useState('');
+  const [editGuestAmount, setEditGuestAmount] = useState('');
+  const [editGuestPassTypeId, setEditGuestPassTypeId] = useState(null);
+  const [editGuestLoading, setEditGuestLoading] = useState(false);
+  const [editGuestError, setEditGuestError] = useState('');
+
+  // Activity log / history
+  const [activityLog, setActivityLog] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(false);
   // Pass types state
   const [passTypes, setPassTypes] = useState([]);
   const [guestPassTypeId, setGuestPassTypeId] = useState(null);
@@ -118,6 +131,13 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
       setCollaborators([]);
     }
   }, [selectedParty]);
+
+  // Fetch activity log when History tab opened
+  useEffect(() => {
+    if (activeTab === 'History' && selectedParty) {
+      fetchActivityLog();
+    }
+  }, [activeTab, selectedParty]);
 
   const fetchPassTypes = async () => {
     if (!selectedParty) return;
@@ -284,11 +304,108 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
         const { error } = await supabase.from('passes').delete().eq('id', id);
         if (error) throw error;
         setGuests(prev => prev.filter(g => g.id !== id));
+        await logActivity('deleted', `Removed pass for "${name}"`);
       } catch (err) {
         console.error('Error deleting guest:', err);
         showToast('Failed to delete guest pass.');
       }
     });
+  };
+
+  // Log an activity entry
+  const logActivity = async (action, description) => {
+    if (!selectedParty) return;
+    try {
+      await supabase.from('party_activity_log').insert([{
+        party_id: selectedParty.id,
+        user_id: currentUser.id,
+        action,
+        description
+      }]);
+    } catch (err) {
+      console.error('Activity log error:', err);
+    }
+  };
+
+  // Fetch activity log
+  const fetchActivityLog = async () => {
+    if (!selectedParty) return;
+    try {
+      setActivityLoading(true);
+      const { data, error } = await supabase
+        .from('party_activity_log')
+        .select('*, user:profiles(name, avatar_url)')
+        .eq('party_id', selectedParty.id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      setActivityLog(data || []);
+    } catch (err) {
+      console.error('Error fetching activity log:', err);
+    } finally {
+      setActivityLoading(false);
+    }
+  };
+
+  // Open edit guest modal
+  const openEditGuest = (guest) => {
+    setEditingGuest(guest);
+    setEditGuestName(guest.name);
+    setEditGuestAmount(String(guest.amount_paid));
+    setEditGuestPassTypeId(guest.pass_type_id || null);
+    setEditGuestError('');
+    setShowEditGuestModal(true);
+  };
+
+  // Save edit guest
+  const handleEditGuest = async (e) => {
+    e.preventDefault();
+    setEditGuestError('');
+    if (!editGuestName.trim()) { setEditGuestError('Name is required.'); return; }
+    const parsedAmount = parseFloat(editGuestAmount);
+    if (isNaN(parsedAmount) || parsedAmount < 0) { setEditGuestError('Enter a valid amount.'); return; }
+
+    setEditGuestLoading(true);
+    try {
+      let ticketTypeToUpdate = 'Custom';
+      if (editGuestPassTypeId) {
+        const sel = passTypes.find(p => p.id === editGuestPassTypeId);
+        if (sel) ticketTypeToUpdate = sel.name;
+      }
+
+      const updateObj = {
+        name: editGuestName.trim(),
+        amount_paid: parsedAmount,
+        ticket_type: ticketTypeToUpdate,
+        pass_type_id: editGuestPassTypeId || null,
+      };
+
+      const { error } = await supabase
+        .from('passes')
+        .update(updateObj)
+        .eq('id', editingGuest.id);
+      if (error) throw error;
+
+      // Build a human-readable diff for the log
+      const changes = [];
+      if (editingGuest.name !== editGuestName.trim()) changes.push(`name: "${editingGuest.name}" → "${editGuestName.trim()}"`);
+      if (parseFloat(editingGuest.amount_paid) !== parsedAmount) changes.push(`amount: ₹${editingGuest.amount_paid} → ₹${parsedAmount}`);
+      const oldType = editingGuest.pass_type?.name || 'Custom';
+      if (oldType !== ticketTypeToUpdate) changes.push(`type: "${oldType}" → "${ticketTypeToUpdate}"`);
+      if (changes.length > 0) {
+        await logActivity('edited', `Edited pass for "${editingGuest.name}": ${changes.join(', ')}`);
+      }
+
+      setShowEditGuestModal(false);
+      setEditingGuest(null);
+      fetchGuests();
+      showToast('Pass updated.', 'success');
+    } catch (err) {
+      console.error('Error editing guest:', err);
+      setEditGuestError(err.message || 'Error occurred.');
+    } finally {
+      setEditGuestLoading(false);
+    }
   };
 
   // Create new party
@@ -496,6 +613,8 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
         .select();
 
       if (error) throw error;
+
+      await logActivity('added', `Added pass for "${guestName.trim()}" (${ticketTypeToInsert}, ₹${parsedAmount})`);
 
       setGuestName('');
       setGuestType('Non-Alcoholic');
@@ -747,7 +866,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
             {selectedParty && (
               <>
                 <div className="mobile-drawer-section-label">Navigation</div>
-                {['Overview', 'Party Info', 'Admins', 'Passes', 'Settings'].map(tab => (
+                {['Overview', 'Party Info', 'Admins', 'Passes', 'History', 'Settings'].map(tab => (
                   <button
                     key={tab}
                     className={`mobile-drawer-item ${activeTab === tab ? 'mobile-drawer-item-active' : ''}`}
@@ -837,7 +956,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                   )}
                 </div>
                 <div className="sidebar-tabs">
-                  {['Overview', 'Party Info', 'Admins', 'Passes', 'Settings'].map((tab) => (
+                  {['Overview', 'Party Info', 'Admins', 'Passes', 'History', 'Settings'].map((tab) => (
                     <button
                       key={tab}
                       type="button"
@@ -1292,6 +1411,13 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                                         {guest.checked_in ? 'Cancel Check-in' : 'Admit Guest'}
                                       </button>
                                       <button
+                                        onClick={() => openEditGuest(guest)}
+                                        className="btn btn-secondary btn-icon-only btn-sm"
+                                        title="Edit pass"
+                                      >
+                                        <Pencil size={14} />
+                                      </button>
+                                      <button
                                         onClick={() => handleDeleteGuest(guest.id, guest.name)}
                                         className="btn btn-danger btn-icon-only btn-sm"
                                       >
@@ -1304,6 +1430,64 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                             })}
                           </tbody>
                         </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'History' && (
+                  <div className="history-panel glass-panel">
+                    <div className="section-heading-row">
+                      <h2><History size={18} style={{verticalAlign:'middle', marginRight:6}} />Activity History</h2>
+                      <button className="btn btn-secondary btn-sm" onClick={fetchActivityLog} title="Refresh">
+                        <RefreshCw size={14} />
+                      </button>
+                    </div>
+                    {activityLoading ? (
+                      <div className="loading-state">
+                        <RefreshCw className="spinner text-purple" size={24} />
+                        <p>Loading history...</p>
+                      </div>
+                    ) : activityLog.length === 0 ? (
+                      <div className="empty-state">
+                        <Clock size={36} className="text-muted" />
+                        <h3>No activity yet</h3>
+                        <p>Changes to guests and passes will appear here.</p>
+                      </div>
+                    ) : (
+                      <div className="activity-log-list">
+                        {activityLog.map(entry => (
+                          <div key={entry.id} className="activity-log-item">
+                            <div className={`activity-icon activity-icon-${entry.action}`}>
+                              {entry.action === 'added'   && <Plus size={13} />}
+                              {entry.action === 'edited'  && <Pencil size={13} />}
+                              {entry.action === 'deleted' && <Trash2 size={13} />}
+                            </div>
+                            <div className="activity-body">
+                              <p className="activity-description">{entry.description}</p>
+                              <div className="activity-meta">
+                                {entry.user && (
+                                  <span className="activity-user">
+                                    <img
+                                      src={entry.user.avatar_url}
+                                      alt={entry.user.name}
+                                      className="activity-avatar"
+                                      onError={e => { e.target.src = 'https://api.dicebear.com/7.x/adventurer/svg?seed=fallback'; }}
+                                    />
+                                    {entry.user.name}
+                                  </span>
+                                )}
+                                <span className="activity-time">
+                                  <Clock size={11} />
+                                  {new Date(entry.created_at).toLocaleString(undefined, {
+                                    month: 'short', day: 'numeric',
+                                    hour: '2-digit', minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -1777,6 +1961,71 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                 </a>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Guest Modal ───────────────────────────────────────────── */}
+      {showEditGuestModal && editingGuest && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel">
+            <div className="modal-header">
+              <h3>Edit Pass — {editingGuest.name}</h3>
+              <button onClick={() => setShowEditGuestModal(false)} className="btn-close-modal">
+                <X size={18} />
+              </button>
+            </div>
+            {editGuestError && <div className="form-error-banner">{editGuestError}</div>}
+            <form onSubmit={handleEditGuest} className="modal-form">
+              <div className="form-group">
+                <label>Attendee Full Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editGuestName}
+                  onChange={e => setEditGuestName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Pass Type</label>
+                <select
+                  className="form-input form-select"
+                  value={editGuestPassTypeId || 'custom'}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val === 'custom') { setEditGuestPassTypeId(null); return; }
+                    setEditGuestPassTypeId(val);
+                    const sel = passTypes.find(p => p.id === val);
+                    if (sel) setEditGuestAmount(String(sel.price));
+                  }}
+                >
+                  <option value="custom">Custom / No preset</option>
+                  {passTypes.map(pt => (
+                    <option key={pt.id} value={pt.id}>{pt.name} (₹{pt.price})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Amount (₹)</label>
+                <input
+                  type="number"
+                  step="any"
+                  className="form-input text-success font-semibold"
+                  value={editGuestAmount}
+                  onChange={e => setEditGuestAmount(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="modal-footer-actions">
+                <button type="button" onClick={() => setShowEditGuestModal(false)} className="btn btn-secondary">
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={editGuestLoading}>
+                  {editGuestLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
