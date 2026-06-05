@@ -6,7 +6,7 @@ import {
   Trash2, X, RefreshCw, AlertCircle, FileSpreadsheet, Key, Calendar, 
   MapPin, LogOut, User as UserIcon, Copy, Check, Users2, Shield, Settings,
   Sparkles, Sun, Moon, Banknote, CreditCard, Image, ExternalLink, Upload,
-  Info, AlertTriangle, Pencil, Clock, History
+  Info, AlertTriangle, Pencil, Clock, History, ChevronDown, ChevronRight, UsersRound
 } from 'lucide-react';
 
 export default function AdminDashboard({ session, theme, toggleTheme }) {
@@ -81,6 +81,19 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
   // Activity log / history
   const [activityLog, setActivityLog] = useState([]);
   const [activityLoading, setActivityLoading] = useState(false);
+
+  // Bulk guest modal
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkGroupName, setBulkGroupName] = useState('');
+  const [bulkGroupColor, setBulkGroupColor] = useState('#6366f1');
+  const [bulkRows, setBulkRows] = useState([
+    { name: '', passTypeId: null, amount: '0', paymentMethod: 'cash' }
+  ]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkError, setBulkError] = useState('');
+
+  // Collapsed groups in table
+  const [collapsedGroups, setCollapsedGroups] = useState({});
   // Pass types state
   const [passTypes, setPassTypes] = useState([]);
   const [guestPassTypeId, setGuestPassTypeId] = useState(null);
@@ -457,6 +470,81 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
     }
   };
 
+  // Bulk guest helpers
+  const addBulkRow = () => setBulkRows(prev => [...prev, { name: '', passTypeId: null, amount: '0', paymentMethod: 'cash' }]);
+  const removeBulkRow = (i) => setBulkRows(prev => prev.filter((_, idx) => idx !== i));
+  const updateBulkRow = (i, field, value) => setBulkRows(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
+
+  const resetBulkModal = () => {
+    setBulkGroupName('');
+    setBulkGroupColor('#6366f1');
+    setBulkRows([{ name: '', passTypeId: null, amount: '0', paymentMethod: 'cash' }]);
+    setBulkError('');
+  };
+
+  const handleAddBulkGuests = async (e) => {
+    e.preventDefault();
+    setBulkError('');
+    if (!bulkGroupName.trim()) { setBulkError('Group name is required.'); return; }
+    const validRows = bulkRows.filter(r => r.name.trim());
+    if (validRows.length === 0) { setBulkError('Add at least one guest.'); return; }
+    for (const r of validRows) {
+      if (isNaN(parseFloat(r.amount)) || parseFloat(r.amount) < 0) {
+        setBulkError(`Invalid amount for "${r.name}".`); return;
+      }
+    }
+
+    setBulkLoading(true);
+    try {
+      const inserts = validRows.map(r => {
+        const randStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const ticketCode = `EVT-${randStr}`;
+        let ticketType = 'Custom';
+        if (r.passTypeId) {
+          const sel = passTypes.find(p => p.id === r.passTypeId);
+          if (sel) ticketType = sel.name;
+        }
+        return {
+          party_id: selectedParty.id,
+          added_by: currentUser.id,
+          name: r.name.trim(),
+          email: null,
+          ticket_type: ticketType,
+          pass_type_id: r.passTypeId || null,
+          amount_paid: parseFloat(r.amount),
+          ticket_code: ticketCode,
+          checked_in: false,
+          payment_method: r.paymentMethod,
+          payment_screenshot_url: null,
+          group_name: bulkGroupName.trim(),
+          group_color: bulkGroupColor,
+        };
+      });
+
+      const { error } = await supabase.from('passes').insert(inserts);
+      if (error) throw error;
+
+      const names = validRows.map(r => r.name.trim()).join(', ');
+      const total = validRows.reduce((s, r) => s + parseFloat(r.amount), 0);
+      await logActivity('added', `Bulk added group "${bulkGroupName.trim()}" (${validRows.length} passes, ₹${total.toFixed(0)} total): ${names}`);
+
+      resetBulkModal();
+      setShowBulkModal(false);
+      fetchGuests();
+      showToast(`${validRows.length} passes added to "${bulkGroupName.trim()}"`, 'success');
+    } catch (err) {
+      console.error('Bulk add error:', err);
+      setBulkError(err.message || 'Error occurred.');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  // Toggle group collapse
+  const toggleGroup = (groupName) => {
+    setCollapsedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
+  };
+
   // Create new party
   const handleCreateParty = async (e) => {
     e.preventDefault();
@@ -752,7 +840,8 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
     const term = searchTerm.toLowerCase();
     const matchesSearch = 
       g.name.toLowerCase().includes(term) || 
-      g.ticket_code.toLowerCase().includes(term);
+      g.ticket_code.toLowerCase().includes(term) ||
+      (g.group_name && g.group_name.toLowerCase().includes(term));
     const matchesStatus = 
       statusFilter === 'All' || 
       (statusFilter === 'CheckedIn' && g.checked_in) || 
@@ -762,6 +851,22 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
 
     return matchesSearch && matchesStatus && matchesType;
   });
+
+  // Build ordered render list: groups first (sorted by group_name), then ungrouped
+  const buildRenderList = () => {
+    const grouped = {};
+    const ungrouped = [];
+    for (const g of filteredGuests) {
+      if (g.group_name) {
+        if (!grouped[g.group_name]) grouped[g.group_name] = [];
+        grouped[g.group_name].push(g);
+      } else {
+        ungrouped.push(g);
+      }
+    }
+    return { grouped, ungrouped };
+  };
+  const { grouped, ungrouped } = buildRenderList();
 
   const getInitials = (name) => {
     if (!name) return 'U';
@@ -796,6 +901,127 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+  };
+
+  // Render a single guest table row (used by both grouped and ungrouped)
+  const renderGuestRow = (guest, groupColor) => {
+    const initials = getInitials(guest.name);
+    const passName = guest.pass_type?.name || 'Custom';
+    const passPrice = guest.pass_type?.price;
+    return (
+      <tr
+        key={guest.id}
+        className={`${guest.checked_in ? 'tr-admitted' : ''} ${groupColor ? 'tr-grouped' : ''}`}
+        style={groupColor ? {'--group-color': groupColor} : {}}
+      >
+        <td>
+          <div className="guest-profile">
+            <div className="guest-avatar">{initials}</div>
+            <div className="guest-info">
+              <span className="guest-name text-truncate">{guest.name}</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div className="guest-ticket-cell">
+            <span className="badge badge-neutral">{passName}</span>
+            <span className="guest-ticket-code">{guest.ticket_code}</span>
+            {passPrice !== undefined && passPrice !== null && (
+              <span className="guest-pass-price">Type price: ₹{parseFloat(passPrice).toFixed(2)}</span>
+            )}
+          </div>
+        </td>
+        <td>
+          <span className="guest-amount font-semibold text-success">
+            ₹{parseFloat(guest.amount_paid).toFixed(2)}
+          </span>
+        </td>
+        <td>
+          <div className="payment-method-cell" style={{display:'flex',flexDirection:'row',gap:'5px',alignItems:'center',flexWrap:'wrap'}}>
+            {guest.payment_method === 'online' ? (
+              <>
+                <span className="badge badge-cyan" style={{display:'inline-flex',alignItems:'center',gap:'4px'}}>
+                  <CreditCard size={11} /> Online
+                </span>
+                {guest.payment_screenshot_url && (
+                  <span
+                    className="badge badge-pink"
+                    style={{cursor:'pointer'}}
+                    onClick={() => setViewScreenshotUrl(guest.payment_screenshot_url)}
+                    title="View payment screenshot"
+                  >
+                    <Image size={11} /> View
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="badge badge-neutral" style={{display:'inline-flex',alignItems:'center',gap:'4px'}}>
+                <Banknote size={11} /> Cash
+              </span>
+            )}
+          </div>
+        </td>
+        <td>
+          {guest.added_by ? (
+            <div className="guest-added-by-profile" title={guest.added_by.name}>
+              <img
+                src={guest.added_by.avatar_url}
+                alt={guest.added_by.name}
+                className="added-by-avatar"
+                onError={e => { e.target.src = 'https://api.dicebear.com/7.x/adventurer/svg?seed=fallback'; }}
+              />
+              <span className="added-by-name text-truncate">{guest.added_by.name.split(' ')[0]}</span>
+            </div>
+          ) : (
+            <span className="text-muted text-xs">System</span>
+          )}
+        </td>
+        <td>
+          <span className="guest-date-cell">
+            {guest.created_at
+              ? new Date(guest.created_at).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
+              : 'N/A'}
+          </span>
+        </td>
+        <td>
+          {guest.checked_in ? (
+            <div className="status-badge-container">
+              <span className="badge badge-success">Admitted</span>
+              {guest.checked_in_at && (
+                <span className="status-timestamp">
+                  {new Date(guest.checked_in_at).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' })}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="badge badge-warning">Pending</span>
+          )}
+        </td>
+        <td>
+          <div className="table-actions-cell">
+            <button
+              onClick={() => handleToggleCheckIn(guest)}
+              className={`btn btn-check-in ${guest.checked_in ? 'btn-admitted' : 'btn-primary'}`}
+            >
+              {guest.checked_in ? 'Cancel Check-in' : 'Admit Guest'}
+            </button>
+            <button
+              onClick={() => openEditGuest(guest)}
+              className="btn btn-secondary btn-icon-only btn-sm"
+              title="Edit pass"
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              onClick={() => handleDeleteGuest(guest.id, guest.name)}
+              className="btn btn-danger btn-icon-only btn-sm"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
   };
 
   const handleLeaveParty = () => {
@@ -1265,6 +1491,10 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                           <Settings size={14} />
                           <span>Manage Types</span>
                         </button>
+                        <button onClick={() => setShowBulkModal(true)} className="btn btn-secondary">
+                          <UsersRound size={14} />
+                          <span>Add Bulk</span>
+                        </button>
                         <button onClick={() => setShowAddGuestModal(true)} className="btn btn-primary">
                           <Plus size={14} />
                           <span>Add Guest</span>
@@ -1349,134 +1579,38 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                             </tr>
                           </thead>
                           <tbody>
-                            {filteredGuests.map((guest) => {
-                              const initials = getInitials(guest.name);
-                              const passName = guest.pass_type?.name || 'Custom';
-                              const passPrice = guest.pass_type?.price;
-                              
+                            {/* Grouped passes */}
+                            {Object.entries(grouped).map(([groupName, groupGuests]) => {
+                              const color = groupGuests[0]?.group_color || '#6366f1';
+                              const isCollapsed = collapsedGroups[groupName];
+                              const groupTotal = groupGuests.reduce((s, g) => s + parseFloat(g.amount_paid || 0), 0);
+                              const admittedInGroup = groupGuests.filter(g => g.checked_in).length;
                               return (
-                                <tr key={guest.id} className={guest.checked_in ? 'tr-admitted' : ''}>
-                                  <td>
-                                    <div className="guest-profile">
-                                      <div className={`guest-avatar`}>
-                                        {initials}
-                                      </div>
-                                      <div className="guest-info">
-                                        <span className="guest-name text-truncate">{guest.name}</span>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td>
-                                    <div className="guest-ticket-cell">
-                                      <span className={`badge badge-neutral`}>
-                                        {passName}
-                                      </span>
-                                      <span className="guest-ticket-code">{guest.ticket_code}</span>
-                                      {passPrice !== undefined && passPrice !== null && (
-                                        <span className="guest-pass-price">Type price: ₹{parseFloat(passPrice).toFixed(2)}</span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td>
-                                    <span className="guest-amount font-semibold text-success">
-                                      ₹{parseFloat(guest.amount_paid).toFixed(2)}
-                                    </span>
-                                  </td>
-                                  <td>
-                                    <div className="payment-method-cell" style={{display:'flex',flexDirection:'row',gap:'5px',alignItems:'center',flexWrap:'wrap'}}>
-                                      {guest.payment_method === 'online' ? (
-                                        <>
-                                          <span className="badge badge-cyan" style={{display:'inline-flex',alignItems:'center',gap:'4px'}}>
-                                            <CreditCard size={11} /> Online
-                                          </span>
-                                          {guest.payment_screenshot_url && (
-                                            <span
-                                              className="badge badge-pink"
-                                              style={{cursor:'pointer'}}
-                                              onClick={() => setViewScreenshotUrl(guest.payment_screenshot_url)}
-                                              title="View payment screenshot"
-                                            >
-                                              <Image size={11} /> View
-                                            </span>
-                                          )}
-                                        </>
-                                      ) : (
-                                        <span className="badge badge-neutral" style={{display:'inline-flex',alignItems:'center',gap:'4px'}}>
-                                          <Banknote size={11} /> Cash
+                                <React.Fragment key={groupName}>
+                                  {/* Group header row */}
+                                  <tr className="group-header-row" onClick={() => toggleGroup(groupName)} style={{'--group-color': color}}>
+                                    <td colSpan={8}>
+                                      <div className="group-header-cell">
+                                        <span className="group-collapse-icon">
+                                          {isCollapsed ? <ChevronRight size={14}/> : <ChevronDown size={14}/>}
                                         </span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td>
-                                    {guest.added_by ? (
-                                      <div className="guest-added-by-profile" title={guest.added_by.name}>
-                                        <img 
-                                          src={guest.added_by.avatar_url} 
-                                          alt={guest.added_by.name} 
-                                          className="added-by-avatar"
-                                          onError={(e) => { e.target.src = 'https://api.dicebear.com/7.x/adventurer/svg?seed=fallback'; }}
-                                        />
-                                        <span className="added-by-name text-truncate">{guest.added_by.name.split(' ')[0]}</span>
+                                        <span className="group-color-dot" style={{background: color}} />
+                                        <span className="group-name">{groupName}</span>
+                                        <span className="group-meta">
+                                          <span className="badge badge-neutral">{groupGuests.length} passes</span>
+                                          <span className="group-stat">₹{groupTotal.toFixed(0)}</span>
+                                          <span className="group-stat">{admittedInGroup}/{groupGuests.length} admitted</span>
+                                        </span>
                                       </div>
-                                    ) : (
-                                      <span className="text-muted text-xs">System</span>
-                                    )}
-                                  </td>
-                                  <td>
-                                    <span className="guest-date-cell">
-                                      {guest.created_at 
-                                        ? new Date(guest.created_at).toLocaleString(undefined, {
-                                            month: 'short',
-                                            day: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                          })
-                                        : 'N/A'}
-                                    </span>
-                                  </td>
-                                  <td>
-                                    {guest.checked_in ? (
-                                      <div className="status-badge-container">
-                                        <span className="badge badge-success">Admitted</span>
-                                        {guest.checked_in_at && (
-                                          <span className="status-timestamp">
-                                            {new Date(guest.checked_in_at).toLocaleTimeString('en-US', {
-                                              hour: '2-digit',
-                                              minute: '2-digit'
-                                            })}
-                                          </span>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <span className="badge badge-warning">Pending</span>
-                                    )}
-                                  </td>
-                                  <td>
-                                    <div className="table-actions-cell">
-                                      <button
-                                        onClick={() => handleToggleCheckIn(guest)}
-                                        className={`btn btn-check-in ${guest.checked_in ? 'btn-admitted' : 'btn-primary'}`}
-                                      >
-                                        {guest.checked_in ? 'Cancel Check-in' : 'Admit Guest'}
-                                      </button>
-                                      <button
-                                        onClick={() => openEditGuest(guest)}
-                                        className="btn btn-secondary btn-icon-only btn-sm"
-                                        title="Edit pass"
-                                      >
-                                        <Pencil size={14} />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteGuest(guest.id, guest.name)}
-                                        className="btn btn-danger btn-icon-only btn-sm"
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
+                                    </td>
+                                  </tr>
+                                  {/* Guest rows inside group */}
+                                  {!isCollapsed && groupGuests.map((guest) => renderGuestRow(guest, color))}
+                                </React.Fragment>
                               );
                             })}
+                            {/* Ungrouped passes */}
+                            {ungrouped.map((guest) => renderGuestRow(guest, null))}
                           </tbody>
                         </table>
                       </div>
@@ -2010,6 +2144,133 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                 </a>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk Guests Modal ──────────────────────────────────────────── */}
+      {showBulkModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel" style={{maxWidth:'600px'}}>
+            <div className="modal-header">
+              <h3><UsersRound size={17} style={{verticalAlign:'middle',marginRight:6}}/>Add Bulk Guests</h3>
+              <button onClick={() => { setShowBulkModal(false); resetBulkModal(); }} className="btn-close-modal">
+                <X size={18} />
+              </button>
+            </div>
+            {bulkError && <div className="form-error-banner">{bulkError}</div>}
+            <form onSubmit={handleAddBulkGuests} className="modal-form">
+
+              {/* Group info */}
+              <div style={{display:'grid', gridTemplateColumns:'1fr auto', gap:'10px', alignItems:'end'}}>
+                <div className="form-group" style={{margin:0}}>
+                  <label>Group Name <span style={{color:'var(--color-danger,#ef4444)'}}>*</span></label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Rahul's Group, Table 4"
+                    value={bulkGroupName}
+                    onChange={e => setBulkGroupName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group" style={{margin:0}}>
+                  <label>Color</label>
+                  <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginTop:'4px'}}>
+                    {['#6366f1','#ec4899','#22c55e','#f59e0b','#06b6d4','#ef4444','#a855f7','#f97316'].map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setBulkGroupColor(c)}
+                        style={{
+                          width:'22px', height:'22px', borderRadius:'50%', background:c, border:'none',
+                          cursor:'pointer', outline: bulkGroupColor === c ? '2px solid white' : 'none',
+                          outlineOffset:'2px', boxShadow: bulkGroupColor === c ? `0 0 0 3px ${c}55` : 'none'
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Guest rows */}
+              <div className="bulk-rows-container">
+                <div className="bulk-rows-header">
+                  <span style={{flex:2}}>Name</span>
+                  <span style={{flex:2}}>Pass Type</span>
+                  <span style={{flex:1}}>Amount (₹)</span>
+                  <span style={{flex:1}}>Payment</span>
+                  <span style={{width:'28px'}}></span>
+                </div>
+                {bulkRows.map((row, i) => (
+                  <div key={i} className="bulk-row" style={{'--group-color': bulkGroupColor}}>
+                    <input
+                      className="form-input"
+                      style={{flex:2, minWidth:0}}
+                      placeholder="Guest name"
+                      value={row.name}
+                      onChange={e => updateBulkRow(i, 'name', e.target.value)}
+                    />
+                    <select
+                      className="form-input"
+                      style={{flex:2, minWidth:0}}
+                      value={row.passTypeId || 'custom'}
+                      onChange={e => {
+                        const val = e.target.value === 'custom' ? null : e.target.value;
+                        updateBulkRow(i, 'passTypeId', val);
+                        if (val) {
+                          const sel = passTypes.find(p => p.id === val);
+                          if (sel) updateBulkRow(i, 'amount', String(sel.price));
+                        }
+                      }}
+                    >
+                      <option value="custom">Custom</option>
+                      {passTypes.map(pt => <option key={pt.id} value={pt.id}>{pt.name} (₹{pt.price})</option>)}
+                    </select>
+                    <input
+                      type="number"
+                      step="any"
+                      className="form-input"
+                      style={{flex:1, minWidth:0}}
+                      value={row.amount}
+                      onChange={e => updateBulkRow(i, 'amount', e.target.value)}
+                    />
+                    <select
+                      className="form-input"
+                      style={{flex:1, minWidth:0}}
+                      value={row.paymentMethod}
+                      onChange={e => updateBulkRow(i, 'paymentMethod', e.target.value)}
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="online">Online</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-icon-only btn-sm"
+                      style={{flexShrink:0}}
+                      onClick={() => removeBulkRow(i)}
+                      disabled={bulkRows.length === 1}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn btn-secondary" style={{alignSelf:'flex-start', marginTop:'4px'}} onClick={addBulkRow}>
+                  <Plus size={13} /> Add Row
+                </button>
+              </div>
+
+              <div style={{fontSize:'0.78rem', color:'var(--text-light)', marginTop:'-4px'}}>
+                {bulkRows.filter(r=>r.name.trim()).length} guests · ₹{bulkRows.filter(r=>r.name.trim()).reduce((s,r)=>s+parseFloat(r.amount||0),0).toFixed(0)} total
+              </div>
+
+              <div className="modal-footer-actions">
+                <button type="button" onClick={() => { setShowBulkModal(false); resetBulkModal(); }} className="btn btn-secondary">Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={bulkLoading}>
+                  {bulkLoading ? 'Registering...' : `Register ${bulkRows.filter(r=>r.name.trim()).length} Guests`}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

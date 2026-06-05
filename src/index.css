@@ -2431,3 +2431,101 @@ button, .btn {
   font-size: 0.72rem;
   color: var(--text-light);
 }
+
+/* ------------------- Bulk / Group Passes ------------------- */
+
+/* Group header row in table */
+.group-header-row {
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg-hover);
+}
+
+.group-header-row:hover {
+  filter: brightness(1.06);
+}
+
+.group-header-row td {
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--group-color, #6366f1);
+}
+
+.group-header-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.group-collapse-icon {
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.group-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.group-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.group-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+  flex-wrap: wrap;
+}
+
+.group-stat {
+  font-size: 0.75rem;
+  color: var(--text-light);
+}
+
+/* Guest rows that belong to a group — left color accent */
+.tr-grouped td:first-child {
+  border-left: 3px solid var(--group-color, #6366f1);
+  padding-left: 11px;
+}
+
+/* Bulk modal rows */
+.bulk-rows-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.bulk-rows-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-light);
+  padding: 0 2px;
+}
+
+.bulk-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-left: 3px solid var(--group-color, #6366f1);
+  padding-left: 10px;
+  border-radius: 0 6px 6px 0;
+}
+
+.bulk-row .form-input {
+  padding: 8px 10px;
+  font-size: 0.83rem;
+}
