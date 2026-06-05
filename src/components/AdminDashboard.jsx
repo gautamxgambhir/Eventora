@@ -86,8 +86,10 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkGroupName, setBulkGroupName] = useState('');
   const [bulkGroupColor, setBulkGroupColor] = useState('#6366f1');
+  const [bulkGroupAmount, setBulkGroupAmount] = useState('0');
+  const [bulkGroupPaymentMethod, setBulkGroupPaymentMethod] = useState('cash');
   const [bulkRows, setBulkRows] = useState([
-    { name: '', passTypeId: null, amount: '0', paymentMethod: 'cash' }
+    { name: '', passTypeId: null }
   ]);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkError, setBulkError] = useState('');
@@ -471,14 +473,16 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
   };
 
   // Bulk guest helpers
-  const addBulkRow = () => setBulkRows(prev => [...prev, { name: '', passTypeId: null, amount: '0', paymentMethod: 'cash' }]);
+  const addBulkRow = () => setBulkRows(prev => [...prev, { name: '', passTypeId: null }]);
   const removeBulkRow = (i) => setBulkRows(prev => prev.filter((_, idx) => idx !== i));
   const updateBulkRow = (i, field, value) => setBulkRows(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
 
   const resetBulkModal = () => {
     setBulkGroupName('');
     setBulkGroupColor('#6366f1');
-    setBulkRows([{ name: '', passTypeId: null, amount: '0', paymentMethod: 'cash' }]);
+    setBulkGroupAmount('0');
+    setBulkGroupPaymentMethod('cash');
+    setBulkRows([{ name: '', passTypeId: null }]);
     setBulkError('');
   };
 
@@ -486,13 +490,13 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
     e.preventDefault();
     setBulkError('');
     if (!bulkGroupName.trim()) { setBulkError('Group name is required.'); return; }
+    const parsedTotal = parseFloat(bulkGroupAmount);
+    if (isNaN(parsedTotal) || parsedTotal < 0) { setBulkError('Enter a valid total amount.'); return; }
     const validRows = bulkRows.filter(r => r.name.trim());
     if (validRows.length === 0) { setBulkError('Add at least one guest.'); return; }
-    for (const r of validRows) {
-      if (isNaN(parseFloat(r.amount)) || parseFloat(r.amount) < 0) {
-        setBulkError(`Invalid amount for "${r.name}".`); return;
-      }
-    }
+
+    // Split total evenly across guests
+    const perPassAmount = validRows.length > 0 ? parseFloat((parsedTotal / validRows.length).toFixed(2)) : 0;
 
     setBulkLoading(true);
     try {
@@ -511,10 +515,10 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
           email: null,
           ticket_type: ticketType,
           pass_type_id: r.passTypeId || null,
-          amount_paid: parseFloat(r.amount),
+          amount_paid: perPassAmount,
           ticket_code: ticketCode,
           checked_in: false,
-          payment_method: r.paymentMethod,
+          payment_method: bulkGroupPaymentMethod,
           payment_screenshot_url: null,
           group_name: bulkGroupName.trim(),
           group_color: bulkGroupColor,
@@ -525,8 +529,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
       if (error) throw error;
 
       const names = validRows.map(r => r.name.trim()).join(', ');
-      const total = validRows.reduce((s, r) => s + parseFloat(r.amount), 0);
-      await logActivity('added', `Bulk added group "${bulkGroupName.trim()}" (${validRows.length} passes, ₹${total.toFixed(0)} total): ${names}`);
+      await logActivity('added', `Bulk added group "${bulkGroupName.trim()}" (${validRows.length} passes, ₹${parsedTotal.toFixed(0)} total, ${bulkGroupPaymentMethod}): ${names}`);
 
       resetBulkModal();
       setShowBulkModal(false);
@@ -2161,8 +2164,8 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
             {bulkError && <div className="form-error-banner">{bulkError}</div>}
             <form onSubmit={handleAddBulkGuests} className="modal-form">
 
-              {/* Group info */}
-              <div style={{display:'grid', gridTemplateColumns:'1fr auto', gap:'10px', alignItems:'end'}}>
+              {/* Group info — name, amount, payment, color */}
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
                 <div className="form-group" style={{margin:0}}>
                   <label>Group Name <span style={{color:'var(--color-danger,#ef4444)'}}>*</span></label>
                   <input
@@ -2175,16 +2178,54 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                   />
                 </div>
                 <div className="form-group" style={{margin:0}}>
+                  <label>Total Amount (₹) <span style={{color:'var(--color-danger,#ef4444)'}}>*</span></label>
+                  <input
+                    type="number"
+                    step="any"
+                    className="form-input text-success font-semibold"
+                    placeholder="Total paid by group"
+                    value={bulkGroupAmount}
+                    onChange={e => setBulkGroupAmount(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', alignItems:'end'}}>
+                <div className="form-group" style={{margin:0}}>
+                  <label>Payment Method</label>
+                  <div style={{display:'flex', gap:'8px', marginTop:'4px'}}>
+                    <button
+                      type="button"
+                      className={`btn ${bulkGroupPaymentMethod === 'cash' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'5px'}}
+                      onClick={() => setBulkGroupPaymentMethod('cash')}
+                    >
+                      <Banknote size={14}/> Cash
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${bulkGroupPaymentMethod === 'online' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'5px'}}
+                      onClick={() => setBulkGroupPaymentMethod('online')}
+                    >
+                      <CreditCard size={14}/> Online
+                    </button>
+                  </div>
+                </div>
+                <div className="form-group" style={{margin:0}}>
                   <label>Color</label>
-                  <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginTop:'4px'}}>
+                  <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginTop:'6px'}}>
                     {['#6366f1','#ec4899','#22c55e','#f59e0b','#06b6d4','#ef4444','#a855f7','#f97316'].map(c => (
                       <button
                         key={c}
                         type="button"
                         onClick={() => setBulkGroupColor(c)}
                         style={{
-                          width:'22px', height:'22px', borderRadius:'50%', background:c, border:'none',
-                          cursor:'pointer', outline: bulkGroupColor === c ? '2px solid white' : 'none',
+                          width:'22px', height:'22px', minWidth:'22px', minHeight:'22px',
+                          borderRadius:'50%', background:c, border:'none',
+                          cursor:'pointer', padding:0, flexShrink:0,
+                          outline: bulkGroupColor === c ? '2px solid white' : 'none',
                           outlineOffset:'2px', boxShadow: bulkGroupColor === c ? `0 0 0 3px ${c}55` : 'none'
                         }}
                       />
@@ -2193,13 +2234,11 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                 </div>
               </div>
 
-              {/* Guest rows */}
+              {/* Guest rows — name + pass type only */}
               <div className="bulk-rows-container">
                 <div className="bulk-rows-header">
-                  <span style={{flex:2}}>Name</span>
+                  <span style={{flex:2}}>Guest Name</span>
                   <span style={{flex:2}}>Pass Type</span>
-                  <span style={{flex:1}}>Amount (₹)</span>
-                  <span style={{flex:1}}>Payment</span>
                   <span style={{width:'28px'}}></span>
                 </div>
                 {bulkRows.map((row, i) => (
@@ -2218,31 +2257,10 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                       onChange={e => {
                         const val = e.target.value === 'custom' ? null : e.target.value;
                         updateBulkRow(i, 'passTypeId', val);
-                        if (val) {
-                          const sel = passTypes.find(p => p.id === val);
-                          if (sel) updateBulkRow(i, 'amount', String(sel.price));
-                        }
                       }}
                     >
                       <option value="custom">Custom</option>
                       {passTypes.map(pt => <option key={pt.id} value={pt.id}>{pt.name} (₹{pt.price})</option>)}
-                    </select>
-                    <input
-                      type="number"
-                      step="any"
-                      className="form-input"
-                      style={{flex:1, minWidth:0}}
-                      value={row.amount}
-                      onChange={e => updateBulkRow(i, 'amount', e.target.value)}
-                    />
-                    <select
-                      className="form-input"
-                      style={{flex:1, minWidth:0}}
-                      value={row.paymentMethod}
-                      onChange={e => updateBulkRow(i, 'paymentMethod', e.target.value)}
-                    >
-                      <option value="cash">Cash</option>
-                      <option value="online">Online</option>
                     </select>
                     <button
                       type="button"
@@ -2261,7 +2279,8 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
               </div>
 
               <div style={{fontSize:'0.78rem', color:'var(--text-light)', marginTop:'-4px'}}>
-                {bulkRows.filter(r=>r.name.trim()).length} guests · ₹{bulkRows.filter(r=>r.name.trim()).reduce((s,r)=>s+parseFloat(r.amount||0),0).toFixed(0)} total
+                {bulkRows.filter(r=>r.name.trim()).length} guests · ₹{parseFloat(bulkGroupAmount||0).toFixed(0)} total
+                {bulkRows.filter(r=>r.name.trim()).length > 0 && ` · ₹${(parseFloat(bulkGroupAmount||0)/bulkRows.filter(r=>r.name.trim()).length).toFixed(2)}/pass`}
               </div>
 
               <div className="modal-footer-actions">
