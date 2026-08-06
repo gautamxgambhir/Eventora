@@ -13,6 +13,81 @@ import {
   QrCode, Link, Send
 } from 'lucide-react';
 
+// ── PassQrModal — proper component so hooks work correctly ──────────────────
+function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
+  const qrRef = useRef(null);
+  const passUrl = `${window.location.origin}/pass/${guest.ticket_code}`;
+  const shortCode = guest.ticket_code.includes('-')
+    ? guest.ticket_code.split('-').slice(1).join('-')
+    : guest.ticket_code;
+  const passTypeName = guest.pass_type?.name || guest.ticket_type || 'General';
+
+  const downloadQr = async () => {
+    if (!qrRef.current) return;
+    try {
+      const canvas = await html2canvas(qrRef.current, {
+        backgroundColor: '#18181b',
+        scale: 3,
+        useCORS: true,
+      });
+      const link = document.createElement('a');
+      link.download = `pass-${shortCode}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (e) { console.error(e); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="pass-qr-modal glass-panel" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3><QrCode size={16} style={{verticalAlign:'middle', marginRight:6}}/>Pass Card</h3>
+          <button className="btn-close-modal" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        {/* Mini pass card — this gets captured by html2canvas */}
+        <div className="pass-qr-modal-card" ref={qrRef}>
+          <div className="pass-qr-modal-header">
+            <span className="pass-qr-modal-event">{partyName}</span>
+            <span className="badge badge-neutral" style={{fontSize:'0.7rem'}}>{passTypeName}</span>
+          </div>
+          <p className="pass-qr-modal-name">{guest.name}</p>
+          <p className="pass-qr-modal-amount text-success">₹{parseFloat(guest.amount_paid || 0).toFixed(2)} paid</p>
+
+          <div className="pass-qr-modal-qr-wrap">
+            <QRCode
+              value={passUrl}
+              size={160}
+              bgColor="transparent"
+              fgColor="currentColor"
+              level="M"
+            />
+          </div>
+
+          <div className="pass-qr-modal-code-row">
+            {shortCode.split('').map((ch, i) => (
+              <span key={i} className="code-char">{ch}</span>
+            ))}
+          </div>
+          <p className="pass-qr-modal-hint">Show QR or read code at entry</p>
+        </div>
+
+        <div className="pass-qr-modal-actions">
+          <button className="btn btn-secondary" onClick={() => onCopyLink(passUrl)}>
+            <Copy size={14} /> Copy Link
+          </button>
+          <a href={passUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+            <ExternalLink size={14} /> Open Pass
+          </a>
+          <button className="btn btn-primary" onClick={downloadQr}>
+            <Download size={14} /> Download QR
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard({ session, theme, toggleTheme }) {
   const currentUser = session.user;
   const [profile, setProfile] = useState(null);
@@ -2199,83 +2274,14 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
       )}
 
       {/* ── Pass QR Modal ─────────────────────────────────────────────── */}
-      {passQrModal && (() => {
-        const g = passQrModal;
-        const passUrl = `${window.location.origin}/pass/${g.ticket_code}`;
-        const shortCode = g.ticket_code.includes('-') ? g.ticket_code.split('-').slice(1).join('-') : g.ticket_code;
-        const passTypeName = g.pass_type?.name || g.ticket_type || 'General';
-        const qrRef = React.createRef();
-
-        const downloadQr = async () => {
-          if (!qrRef.current) return;
-          try {
-            const canvas = await html2canvas(qrRef.current, { backgroundColor: null, scale: 3 });
-            const link = document.createElement('a');
-            link.download = `pass-${shortCode}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-          } catch (e) { console.error(e); }
-        };
-
-        return (
-          <div className="modal-overlay" onClick={() => setPassQrModal(null)}>
-            <div className="pass-qr-modal glass-panel" onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3><QrCode size={16} style={{verticalAlign:'middle', marginRight:6}}/>Pass Card</h3>
-                <button className="btn-close-modal" onClick={() => setPassQrModal(null)}><X size={18} /></button>
-              </div>
-
-              {/* Mini pass card preview */}
-              <div className="pass-qr-modal-card" ref={qrRef}>
-                <div className="pass-qr-modal-header">
-                  <span className="pass-qr-modal-event">{selectedParty?.name}</span>
-                  <span className="badge badge-neutral" style={{fontSize:'0.7rem'}}>{passTypeName}</span>
-                </div>
-                <p className="pass-qr-modal-name">{g.name}</p>
-                <p className="pass-qr-modal-amount text-success">₹{parseFloat(g.amount_paid || 0).toFixed(2)} paid</p>
-
-                <div className="pass-qr-modal-qr-wrap">
-                  <QRCode
-                    value={passUrl}
-                    size={160}
-                    bgColor="transparent"
-                    fgColor="currentColor"
-                    level="M"
-                  />
-                </div>
-
-                <div className="pass-qr-modal-code-row">
-                  {shortCode.split('').map((ch, i) => (
-                    <span key={i} className="code-char">{ch}</span>
-                  ))}
-                </div>
-                <p className="pass-qr-modal-hint">Show QR or read code at entry</p>
-              </div>
-
-              {/* Action buttons */}
-              <div className="pass-qr-modal-actions">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => { navigator.clipboard.writeText(passUrl); showToast('Pass link copied!', 'success'); }}
-                >
-                  <Copy size={14} /> Copy Link
-                </button>
-                <a
-                  href={passUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-secondary"
-                >
-                  <ExternalLink size={14} /> Open Pass
-                </a>
-                <button className="btn btn-primary" onClick={downloadQr}>
-                  <Download size={14} /> Download QR
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {passQrModal && (
+        <PassQrModal
+          guest={passQrModal}
+          partyName={selectedParty?.name}
+          onClose={() => setPassQrModal(null)}
+          onCopyLink={(url) => { navigator.clipboard.writeText(url); showToast('Pass link copied!', 'success'); }}
+        />
+      )}
 
       {/* ── Bulk Guests Modal ──────────────────────────────────────────── */}
       {showBulkModal && (
