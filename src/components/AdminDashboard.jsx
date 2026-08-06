@@ -17,10 +17,12 @@ import {
 function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
   const cardRef = useRef(null);
   const [copied, setCopiedLocal] = useState(false);
-  const passUrl = `${window.location.origin}/pass/${guest.ticket_code}`;
-  const shortCode = guest.ticket_code.includes('-')
-    ? guest.ticket_code.split('-').slice(1).join('-')
-    : guest.ticket_code;
+
+  const ticketCode  = guest?.ticket_code || '';
+  const passUrl     = `${window.location.origin}/pass/${ticketCode}`;
+  const shortCode   = ticketCode.includes('-')
+    ? ticketCode.split('-').slice(1).join('-')
+    : ticketCode;
   const passTypeName = guest.pass_type?.name || guest.ticket_type || 'General';
 
   const handleCopy = () => {
@@ -37,6 +39,7 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
         scale: 3,
         useCORS: true,
         logging: false,
+        foreignObjectRendering: false,
       });
       const link = document.createElement('a');
       link.download = `pass-${shortCode}.png`;
@@ -55,13 +58,13 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
             <QrCode size={15} />
             <span>Pass Card</span>
           </div>
-          <button className="pqm-close" onClick={onClose}><X size={16} /></button>
+          <button className="pqm-close" onClick={onClose} aria-label="Close">
+            <X size={14} />
+          </button>
         </div>
 
         {/* ── Card (captured for download) ── */}
         <div className="pqm-card" ref={cardRef}>
-
-          {/* gradient top strip */}
           <div className="pqm-card-strip" />
 
           <div className="pqm-card-body">
@@ -72,8 +75,6 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
               <span className="pqm-type-badge">{passTypeName}</span>
               <span className="pqm-amount">₹{parseFloat(guest.amount_paid || 0).toFixed(2)}</span>
               <span className="pqm-amount-label">Amount Paid</span>
-
-              {/* code boxes */}
               <div className="pqm-code-row">
                 {shortCode.split('').map((ch, i) => (
                   <span key={i} className="pqm-code-char">{ch}</span>
@@ -86,7 +87,7 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
             <div className="pqm-qr-wrap">
               <QRCodeDisplay
                 value={passUrl}
-                size={148}
+                size={140}
                 darkColor="#111113"
                 lightColor="#ffffff"
               />
@@ -94,7 +95,6 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
             </div>
           </div>
 
-          {/* status chip */}
           <div className={`pqm-status ${guest.checked_in ? 'pqm-status-in' : 'pqm-status-pending'}`}>
             {guest.checked_in ? '✓ Admitted' : '○ Not Yet Admitted'}
           </div>

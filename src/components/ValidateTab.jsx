@@ -6,17 +6,11 @@ import {
   Camera, CameraOff, RefreshCw, X, UserCheck
 } from 'lucide-react';
 
-/**
- * ValidateTab — admin-only guest validation panel.
- * Two modes:
- *   1. Manual code entry — staff types/pastes the 6-char code
- *   2. QR scanner       — camera scans the QR and auto-admits
- */
 export default function ValidateTab({ selectedParty, currentUser, showToast, onGuestAdmitted }) {
   // ── Code entry mode ──────────────────────────────────────────
   const [codeInput, setCodeInput]         = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
-  const [lookupResult, setLookupResult]   = useState(null); // pass object or null
+  const [lookupResult, setLookupResult]   = useState(null);
   const [lookupError, setLookupError]     = useState('');
   const [admitLoading, setAdmitLoading]   = useState(false);
 
@@ -24,19 +18,31 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
   const [scannerMode, setScannerMode]     = useState(false);
   const [scannerReady, setScannerReady]   = useState(false);
   const [scannerError, setScannerError]   = useState('');
-  const scannerRef                        = useRef(null); // Html5Qrcode instance
+  const scannerRef                        = useRef(null);
   const scannerDivId                      = 'evtora-qr-scanner';
-  const scanCooldownRef                   = useRef(false);  // prevents double-fire
+  const scanCooldownRef                   = useRef(false);
 
   // ── Admission modal ─────────────────────────────────────────
-  const [admitModal, setAdmitModal]       = useState(null); // { pass, alreadyAdmitted }
+  const [admitModal, setAdmitModal] = useState(null);
+
+  // ── Guard: no party selected ────────────────────────────────
+  if (!selectedParty) {
+    return (
+      <div className="validate-tab-root glass-panel">
+        <div className="empty-state">
+          <UserCheck size={36} className="text-muted" />
+          <h3>No Event Selected</h3>
+          <p>Select an event from the sidebar to start validating passes.</p>
+        </div>
+      </div>
+    );
+  }
 
   /* ── Lookup a pass by code ─────────────────────────────────── */
   const lookupPass = useCallback(async (rawCode) => {
     const code = rawCode.trim().toUpperCase();
-    if (!code) return;
+    if (!code || !selectedParty) return;
 
-    // Accept both "XXXXXX" (short) and "EVT-XXXXXX" (full)
     const ticketCode = code.startsWith('EVT-') ? code : `EVT-${code}`;
 
     setLookupLoading(true);
@@ -55,7 +61,6 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
         setLookupError('No pass found with that code for this event.');
         return;
       }
-
       setLookupResult(data);
     } catch (e) {
       setLookupError(e.message || 'Lookup failed.');
@@ -64,10 +69,11 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
     }
   }, [selectedParty]);
 
-  /* ── Admit a guest (toggle check-in) ──────────────────────── */
+  /* ── Admit a guest ─────────────────────────────────────────── */
   const admitGuest = useCallback(async (pass, forceAdmit = true) => {
-    const newStatus  = forceAdmit ? true : !pass.checked_in;
-    const checkInAt  = newStatus ? new Date().toISOString() : null;
+    if (!selectedParty) return;
+    const newStatus = forceAdmit ? true : !pass.checked_in;
+    const checkInAt = newStatus ? new Date().toISOString() : null;
 
     setAdmitLoading(true);
     try {
@@ -78,23 +84,19 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
 
       if (error) throw error;
 
-      // Log the activity
-      await supabase.from('party_activity_log').insert([{
+      // Log activity — non-blocking, failure doesn't break the flow
+      supabase.from('party_activity_log').insert([{
         party_id: selectedParty.id,
         user_id: currentUser.id,
         action: newStatus ? 'check-in' : 'check-out',
-        description: `${newStatus ? 'Admitted' : 'Revoked admission for'} "${pass.name}" via ${forceAdmit ? 'QR scan' : 'code'}`
-      }]);
+        description: `${newStatus ? 'Admitted' : 'Revoked admission for'} "${pass.name}" via ${forceAdmit ? 'QR scan' : 'manual code'}`
+      }]).then(({ error: logErr }) => {
+        if (logErr) console.warn('Activity log error (non-critical):', logErr.message);
+      });
 
       const updatedPass = { ...pass, checked_in: newStatus, checked_in_at: checkInAt };
-
-      // Show admission modal
       setAdmitModal({ pass: updatedPass, wasAdmitted: newStatus });
-
-      // Refresh guest list in parent
       if (onGuestAdmitted) onGuestAdmitted();
-
-      // Update lookup result if visible
       setLookupResult(updatedPass);
     } catch (e) {
       showToast('Failed to update admission: ' + (e.message || 'Unknown error'));
@@ -103,13 +105,12 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
     }
   }, [selectedParty, currentUser, onGuestAdmitted, showToast]);
 
-  /* ── QR scan success handler ──────────────────────────────── */
+  /* ── QR scan success ───────────────────────────────────────── */
   const handleScanSuccess = useCallback(async (decodedText) => {
-    if (scanCooldownRef.current) return;
+    if (scanCooldownRef.current || !selectedParty) return;
     scanCooldownRef.current = true;
-    setTimeout(() => { scanCooldownRef.current = false; }, 3000); // 3 s cooldown
+    setTimeout(() => { scanCooldownRef.current = false; }, 3000);
 
-    // Extract ticket code from URL or raw value
     let code = decodedText.trim();
     try {
       const url = new URL(code);
@@ -119,7 +120,6 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
         code = parts[passIdx + 1].toUpperCase();
       }
     } catch {
-      // Not a URL, use raw value
       code = code.toUpperCase();
     }
 
@@ -134,63 +134,63 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
         .single();
 
       if (error || !data) {
-        showToast('QR code not recognized for this event.', 'warning');
+        showToast('QR code not recognised for this event.', 'warning');
         return;
       }
 
       if (data.checked_in) {
-        // Already admitted — show modal but don't re-admit
         setAdmitModal({ pass: data, wasAdmitted: true, alreadyAdmitted: true });
         return;
       }
 
-      // Admit the guest
       await admitGuest(data, true);
     } catch (e) {
       showToast('Scan error: ' + (e.message || 'Unknown error'));
     }
   }, [selectedParty, admitGuest, showToast]);
 
-  /* ── Start QR scanner ─────────────────────────────────────── */
-  const startScanner = useCallback(async () => {
-    setScannerError('');
-    setScannerReady(false);
-
-    // Small delay so the DOM div is mounted
-    await new Promise(r => setTimeout(r, 150));
-
-    try {
-      const qr = new Html5Qrcode(scannerDivId);
-      scannerRef.current = qr;
-
-      await qr.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 220, height: 220 } },
-        handleScanSuccess,
-        () => {} // ignore errors (constant scan failures until found)
-      );
-      setScannerReady(true);
-    } catch (e) {
-      setScannerError('Camera access denied or unavailable. Please allow camera permissions.');
-      console.error('QR scanner error:', e);
-    }
-  }, [handleScanSuccess]);
-
-  /* ── Stop QR scanner ──────────────────────────────────────── */
+  /* ── Stop scanner ──────────────────────────────────────────── */
   const stopScanner = useCallback(async () => {
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
         scannerRef.current.clear();
       } catch (e) {
-        console.error('Stop scanner error:', e);
+        // ignore — scanner may already be stopped
       }
       scannerRef.current = null;
     }
     setScannerReady(false);
   }, []);
 
-  /* ── Toggle scanner mode ──────────────────────────────────── */
+  /* ── Start scanner ─────────────────────────────────────────── */
+  const startScanner = useCallback(async () => {
+    // Always clean up any existing instance first
+    await stopScanner();
+
+    setScannerError('');
+    setScannerReady(false);
+
+    // Delay so the DOM div is guaranteed to be mounted
+    await new Promise(r => setTimeout(r, 200));
+
+    try {
+      const qr = new Html5Qrcode(scannerDivId);
+      scannerRef.current = qr;
+      await qr.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        handleScanSuccess,
+        () => {} // ignore per-frame decode errors
+      );
+      setScannerReady(true);
+    } catch (e) {
+      setScannerError('Camera access denied or unavailable. Please allow camera permissions and try again.');
+      console.error('QR scanner error:', e);
+    }
+  }, [handleScanSuccess, stopScanner]);
+
+  /* ── Scanner lifecycle on mode toggle ─────────────────────── */
   useEffect(() => {
     if (scannerMode) {
       startScanner();
@@ -198,14 +198,14 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
       stopScanner();
     }
     return () => { stopScanner(); };
-  }, [scannerMode]);
+  }, [scannerMode, startScanner, stopScanner]);
 
-  /* ── Cleanup on unmount ───────────────────────────────────── */
+  /* ── Cleanup on unmount ────────────────────────────────────── */
   useEffect(() => {
     return () => { stopScanner(); };
-  }, []);
+  }, [stopScanner]);
 
-  /* ── Reset on party change ────────────────────────────────── */
+  /* ── Reset state when party changes ───────────────────────── */
   useEffect(() => {
     setCodeInput('');
     setLookupResult(null);
@@ -218,7 +218,7 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
     lookupPass(codeInput);
   };
 
-  const shortCode = (tc) => tc?.includes('-') ? tc.split('-').slice(1).join('-') : tc;
+  const shortCode = (tc) => tc?.includes('-') ? tc.split('-').slice(1).join('-') : (tc || '');
 
   return (
     <div className="validate-tab-root glass-panel">
@@ -247,7 +247,7 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
       {!scannerMode && (
         <div className="validate-code-panel">
           <p className="validate-hint">
-            Enter the 6-character code on the guest's pass, or the full ticket code (e.g. EVT-ABC123).
+            Enter the 6-character code from the guest's pass, or the full ticket code (e.g. EVT-ABC123).
           </p>
 
           <form className="validate-code-form" onSubmit={handleCodeSubmit}>
@@ -277,7 +277,6 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
             </div>
           </form>
 
-          {/* Lookup error */}
           {lookupError && (
             <div className="validate-feedback validate-feedback-error">
               <AlertCircle size={16} />
@@ -285,7 +284,6 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
             </div>
           )}
 
-          {/* Lookup result */}
           {lookupResult && (
             <div className={`validate-result-card ${lookupResult.checked_in ? 'result-admitted' : 'result-pending'}`}>
               <div className="result-status-icon">
@@ -317,9 +315,7 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
                 >
                   {admitLoading
                     ? <RefreshCw size={14} className="spinner" />
-                    : lookupResult.checked_in
-                      ? <XCircle size={14} />
-                      : <CheckCircle size={14} />
+                    : lookupResult.checked_in ? <XCircle size={14} /> : <CheckCircle size={14} />
                   }
                   {lookupResult.checked_in ? 'Revoke Admission' : 'Admit Guest'}
                 </button>
@@ -375,48 +371,36 @@ export default function ValidateTab({ selectedParty, currentUser, showToast, onG
             <button className="btn-close-modal admit-modal-close" onClick={() => setAdmitModal(null)}>
               <X size={18} />
             </button>
-
             <div className="admit-modal-icon">
               {admitModal.wasAdmitted
                 ? <CheckCircle size={52} className="text-success" />
                 : <XCircle size={52} className="text-danger" />
               }
             </div>
-
             <h2 className="admit-modal-title">
               {admitModal.alreadyAdmitted
                 ? 'Already Admitted'
-                : admitModal.wasAdmitted
-                  ? 'Guest Admitted!'
-                  : 'Admission Revoked'
+                : admitModal.wasAdmitted ? 'Guest Admitted!' : 'Admission Revoked'
               }
             </h2>
-
             <p className="admit-modal-name">{admitModal.pass.name}</p>
-
             <div className="admit-modal-meta">
               <span className="badge badge-neutral">
                 {admitModal.pass.pass_type?.name || admitModal.pass.ticket_type || 'General'}
               </span>
               <span className="admit-modal-code">{admitModal.pass.ticket_code}</span>
             </div>
-
             {admitModal.alreadyAdmitted && (
               <p className="admit-modal-warning">
                 <AlertCircle size={14} /> This pass was already admitted earlier.
               </p>
             )}
-
             {admitModal.wasAdmitted && admitModal.pass.checked_in_at && (
               <p className="admit-modal-time text-muted">
                 {new Date(admitModal.pass.checked_in_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' })}
               </p>
             )}
-
-            <button
-              className="btn btn-primary admit-modal-done"
-              onClick={() => setAdmitModal(null)}
-            >
+            <button className="btn btn-primary admit-modal-done" onClick={() => setAdmitModal(null)}>
               Done
             </button>
           </div>

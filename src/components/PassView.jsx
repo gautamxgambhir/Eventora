@@ -4,20 +4,12 @@ import QRCodeDisplay from './QRCodeDisplay';
 import { Sparkles, CheckCircle, XCircle, Download, AlertCircle } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
-/**
- * PassView — public guest-facing page.
- * URL: /pass/<ticket_code>
- * No authentication required.
- */
 export default function PassView({ ticketCode }) {
-  const [pass, setPass]     = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState('');
-  const cardRef             = useRef(null);
+  const [pass, setPass]         = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
+  const cardRef                 = useRef(null);
   const [downloading, setDownloading] = useState(false);
-
-  // The publicly shareable URL that gets encoded in the QR
-  const passUrl = `${window.location.origin}/pass/${ticketCode}`;
 
   useEffect(() => {
     if (!ticketCode) { setError('Invalid pass link.'); setLoading(false); return; }
@@ -43,22 +35,20 @@ export default function PassView({ ticketCode }) {
     }
   };
 
-  // Extract the 6-char code from ticket_code ("EVT-XXXXXX" → "XXXXXX")
-  const shortCode = ticketCode?.includes('-')
-    ? ticketCode.split('-').slice(1).join('-')
-    : ticketCode;
-
   const handleDownload = async () => {
     if (!cardRef.current) return;
     setDownloading(true);
     try {
       const canvas = await html2canvas(cardRef.current, {
-        backgroundColor: '#18181b',
+        backgroundColor: '#ffffff',
         scale: 2,
         useCORS: true,
+        logging: false,
+        // Tell html2canvas to render SVG elements properly
+        foreignObjectRendering: false,
       });
       const link = document.createElement('a');
-      link.download = `pass-${shortCode}.png`;
+      link.download = `pass-${ticketCode}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (e) {
@@ -93,9 +83,16 @@ export default function PassView({ ticketCode }) {
     );
   }
 
+  // Derive values only after pass is confirmed loaded
+  const passUrl       = `${window.location.origin}/pass/${ticketCode}`;
+  const shortCode     = ticketCode?.includes('-')
+    ? ticketCode.split('-').slice(1).join('-')
+    : (ticketCode || '');
   const passTypeName  = pass.pass_type?.name  || pass.ticket_type || 'General';
   const partyName     = pass.party?.name      || 'Event';
-  const partyDate     = pass.party?.date      ? new Date(pass.party.date).toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'long', day:'numeric' }) : '';
+  const partyDate     = pass.party?.date
+    ? new Date(pass.party.date).toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'long', day:'numeric' })
+    : '';
   const partyLocation = pass.party?.location  || '';
   const amountPaid    = parseFloat(pass.amount_paid || 0).toFixed(2);
 
@@ -133,7 +130,7 @@ export default function PassView({ ticketCode }) {
             <div className="pass-divider-notch right" />
           </div>
 
-          {/* Guest info */}
+          {/* Guest info + QR */}
           <div className="pass-card-body">
             <div className="pass-guest-info">
               <div className="pass-field">
@@ -148,7 +145,7 @@ export default function PassView({ ticketCode }) {
                 <span className="pass-field-label">Amount Paid</span>
                 <span className="pass-field-value text-success">₹{amountPaid}</span>
               </div>
-              {pass.pass_type?.price && (
+              {pass.pass_type?.price != null && (
                 <div className="pass-field">
                   <span className="pass-field-label">Pass Price</span>
                   <span className="pass-field-value">₹{parseFloat(pass.pass_type.price).toFixed(2)}</span>
@@ -162,7 +159,7 @@ export default function PassView({ ticketCode }) {
                 <QRCodeDisplay
                   value={passUrl}
                   size={148}
-                  darkColor="#111113"
+                  darkColor="#0f172a"
                   lightColor="#ffffff"
                 />
               </div>
@@ -180,7 +177,9 @@ export default function PassView({ ticketCode }) {
             {pass.checked_in ? (
               <>
                 <CheckCircle size={15} />
-                <span>Admitted{pass.checked_in_at ? ` · ${new Date(pass.checked_in_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}` : ''}</span>
+                <span>Admitted{pass.checked_in_at
+                  ? ` · ${new Date(pass.checked_in_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}`
+                  : ''}</span>
               </>
             ) : (
               <>

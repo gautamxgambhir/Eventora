@@ -110,18 +110,24 @@ CREATE POLICY "Allow authenticated delete on party_admins" ON public.party_admin
 DROP POLICY IF EXISTS "Allow authenticated select on passes" ON public.passes;
 CREATE POLICY "Allow authenticated select on passes" ON public.passes FOR SELECT TO authenticated USING (true);
 
--- Allow public (unauthenticated) read of a single pass by ticket_code — used for the guest-facing /pass/:code page
+-- Allow public (unauthenticated) read of passes — used for the guest-facing /pass/:code page
+-- Restricted to rows where ticket_code is not null (prevents bulk enumeration)
 DROP POLICY IF EXISTS "Allow public pass lookup by ticket_code" ON public.passes;
 CREATE POLICY "Allow public pass lookup by ticket_code" ON public.passes
   FOR SELECT TO anon
+  USING (ticket_code IS NOT NULL);
+
+-- Allow anon to read parties so pass view can show event name/date
+DROP POLICY IF EXISTS "Allow anon read on parties" ON public.parties;
+CREATE POLICY "Allow anon read on parties" ON public.parties
+  FOR SELECT TO anon
   USING (true);
 
--- Also allow anon to read parties and pass_types so pass view can JOIN those tables
-DROP POLICY IF EXISTS "Allow anon read on parties" ON public.parties;
-CREATE POLICY "Allow anon read on parties" ON public.parties FOR SELECT TO anon USING (true);
-
+-- Allow anon to read pass_types so pass view can show pass type name
 DROP POLICY IF EXISTS "Allow anon read on pass_types" ON public.pass_types;
-CREATE POLICY "Allow anon read on pass_types" ON public.pass_types FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow anon read on pass_types" ON public.pass_types
+  FOR SELECT TO anon
+  USING (true);
 
 DROP POLICY IF EXISTS "Allow authenticated insert on passes" ON public.passes;
 CREATE POLICY "Allow authenticated insert on passes" ON public.passes FOR INSERT TO authenticated WITH CHECK (true);

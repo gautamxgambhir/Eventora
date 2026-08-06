@@ -3253,16 +3253,19 @@ button, .btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  border: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
   background: var(--bg-hover);
   color: var(--text-muted);
   cursor: pointer;
   transition: var(--transition);
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 0;
 }
-.pqm-close:hover { background: var(--danger-light); color: var(--danger); }
+.pqm-close:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
 
 /* card area */
 .pqm-card {
