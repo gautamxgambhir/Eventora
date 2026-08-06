@@ -968,7 +968,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
               title="View pass QR & link"
               onClick={() => setPassQrModal(guest)}
             >
-              <QrCode size={13} /> Pass
+              <QrCode size={13} /> QR &amp; Link
             </button>
           </div>
         </td>
