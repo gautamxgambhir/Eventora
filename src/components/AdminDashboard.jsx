@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import UserProfile from './UserProfile';
 import ValidateTab from './ValidateTab';
-import QRCode from 'react-qr-code';
+import QRCodeDisplay from './QRCodeDisplay';
 import html2canvas from 'html2canvas';
 import { 
   Users, CheckCircle, Search, Filter, Plus, Download, 
@@ -55,12 +55,9 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
           <p className="pass-qr-modal-amount text-success">₹{parseFloat(guest.amount_paid || 0).toFixed(2)} paid</p>
 
           <div className="pass-qr-modal-qr-wrap">
-            <QRCode
+            <QRCodeDisplay
               value={passUrl}
               size={160}
-              bgColor="transparent"
-              fgColor="currentColor"
-              level="M"
             />
           </div>
 
