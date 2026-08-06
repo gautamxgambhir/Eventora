@@ -15,20 +15,28 @@ import {
 
 // ── PassQrModal — proper component so hooks work correctly ──────────────────
 function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
-  const qrRef = useRef(null);
+  const cardRef = useRef(null);
+  const [copied, setCopiedLocal] = useState(false);
   const passUrl = `${window.location.origin}/pass/${guest.ticket_code}`;
   const shortCode = guest.ticket_code.includes('-')
     ? guest.ticket_code.split('-').slice(1).join('-')
     : guest.ticket_code;
   const passTypeName = guest.pass_type?.name || guest.ticket_type || 'General';
 
+  const handleCopy = () => {
+    onCopyLink(passUrl);
+    setCopiedLocal(true);
+    setTimeout(() => setCopiedLocal(false), 2000);
+  };
+
   const downloadQr = async () => {
-    if (!qrRef.current) return;
+    if (!cardRef.current) return;
     try {
-      const canvas = await html2canvas(qrRef.current, {
-        backgroundColor: '#18181b',
+      const canvas = await html2canvas(cardRef.current, {
+        backgroundColor: '#111113',
         scale: 3,
         useCORS: true,
+        logging: false,
       });
       const link = document.createElement('a');
       link.download = `pass-${shortCode}.png`;
@@ -39,45 +47,70 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="pass-qr-modal glass-panel" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3><QrCode size={16} style={{verticalAlign:'middle', marginRight:6}}/>Pass Card</h3>
-          <button className="btn-close-modal" onClick={onClose}><X size={18} /></button>
+      <div className="pqm-shell" onClick={e => e.stopPropagation()}>
+
+        {/* ── Header ── */}
+        <div className="pqm-header">
+          <div className="pqm-header-left">
+            <QrCode size={15} />
+            <span>Pass Card</span>
+          </div>
+          <button className="pqm-close" onClick={onClose}><X size={16} /></button>
         </div>
 
-        {/* Mini pass card — this gets captured by html2canvas */}
-        <div className="pass-qr-modal-card" ref={qrRef}>
-          <div className="pass-qr-modal-header">
-            <span className="pass-qr-modal-event">{partyName}</span>
-            <span className="badge badge-neutral" style={{fontSize:'0.7rem'}}>{passTypeName}</span>
-          </div>
-          <p className="pass-qr-modal-name">{guest.name}</p>
-          <p className="pass-qr-modal-amount text-success">₹{parseFloat(guest.amount_paid || 0).toFixed(2)} paid</p>
+        {/* ── Card (captured for download) ── */}
+        <div className="pqm-card" ref={cardRef}>
 
-          <div className="pass-qr-modal-qr-wrap">
-            <QRCodeDisplay
-              value={passUrl}
-              size={160}
-            />
+          {/* gradient top strip */}
+          <div className="pqm-card-strip" />
+
+          <div className="pqm-card-body">
+            {/* left: guest info */}
+            <div className="pqm-info">
+              <span className="pqm-party">{partyName}</span>
+              <h2 className="pqm-name">{guest.name}</h2>
+              <span className="pqm-type-badge">{passTypeName}</span>
+              <span className="pqm-amount">₹{parseFloat(guest.amount_paid || 0).toFixed(2)}</span>
+              <span className="pqm-amount-label">Amount Paid</span>
+
+              {/* code boxes */}
+              <div className="pqm-code-row">
+                {shortCode.split('').map((ch, i) => (
+                  <span key={i} className="pqm-code-char">{ch}</span>
+                ))}
+              </div>
+              <span className="pqm-code-hint">Entry code</span>
+            </div>
+
+            {/* right: QR */}
+            <div className="pqm-qr-wrap">
+              <QRCodeDisplay
+                value={passUrl}
+                size={148}
+                darkColor="#111113"
+                lightColor="#ffffff"
+              />
+              <span className="pqm-scan-hint">Scan to verify</span>
+            </div>
           </div>
 
-          <div className="pass-qr-modal-code-row">
-            {shortCode.split('').map((ch, i) => (
-              <span key={i} className="code-char">{ch}</span>
-            ))}
+          {/* status chip */}
+          <div className={`pqm-status ${guest.checked_in ? 'pqm-status-in' : 'pqm-status-pending'}`}>
+            {guest.checked_in ? '✓ Admitted' : '○ Not Yet Admitted'}
           </div>
-          <p className="pass-qr-modal-hint">Show QR or read code at entry</p>
         </div>
 
-        <div className="pass-qr-modal-actions">
-          <button className="btn btn-secondary" onClick={() => onCopyLink(passUrl)}>
-            <Copy size={14} /> Copy Link
+        {/* ── Actions ── */}
+        <div className="pqm-actions">
+          <button className="pqm-btn pqm-btn-copy" onClick={handleCopy}>
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            {copied ? 'Copied!' : 'Copy Link'}
           </button>
-          <a href={passUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+          <a href={passUrl} target="_blank" rel="noopener noreferrer" className="pqm-btn pqm-btn-open">
             <ExternalLink size={14} /> Open Pass
           </a>
-          <button className="btn btn-primary" onClick={downloadQr}>
-            <Download size={14} /> Download QR
+          <button className="pqm-btn pqm-btn-download" onClick={downloadQr}>
+            <Download size={14} /> Download
           </button>
         </div>
       </div>

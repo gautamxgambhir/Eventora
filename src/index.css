@@ -3215,99 +3215,237 @@ button, .btn {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PASS QR MODAL
+   PASS QR MODAL  (redesigned)
 ═══════════════════════════════════════════════════════════════ */
 
-.pass-qr-modal {
-  width: 90%;
-  max-width: 320px;
-  border-radius: 18px;
+.pqm-shell {
+  width: 92%;
+  max-width: 420px;
+  border-radius: 20px;
+  background: var(--bg-white);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.4);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  animation: popIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Mini pass card inside the modal */
-.pass-qr-modal-card {
+/* header */
+.pqm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.pqm-header-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.pqm-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.pqm-close:hover { background: var(--danger-light); color: var(--danger); }
+
+/* card area */
+.pqm-card {
+  background: #111113;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pqm-card-strip {
+  height: 4px;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
+}
+
+.pqm-card-body {
+  display: flex;
+  gap: 0;
+  padding: 20px 20px 16px;
+  align-items: flex-start;
+}
+
+/* left info column */
+.pqm-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 16px;
+}
+
+.pqm-party {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6366f1;
+}
+
+.pqm-name {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #f4f4f5;
+  line-height: 1.2;
+  margin: 2px 0 6px;
+}
+
+.pqm-type-badge {
+  display: inline-block;
+  background: rgba(99,102,241,0.18);
+  color: #a5b4fc;
+  border: 1px solid rgba(99,102,241,0.3);
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  width: fit-content;
+  margin-bottom: 10px;
+}
+
+.pqm-amount {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #4ade80;
+  line-height: 1;
+}
+
+.pqm-amount-label {
+  font-size: 0.62rem;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+}
+
+/* code boxes */
+.pqm-code-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.pqm-code-char {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 28px;
+  background: #1c1c1f;
+  border: 1px solid #3f3f46;
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #f4f4f5;
+}
+
+.pqm-code-hint {
+  font-size: 0.62rem;
+  color: #52525b;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+/* QR right side */
+.pqm-qr-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 20px 20px 16px;
-  background: var(--bg-hover);
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
-.pass-qr-modal-header {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 2px;
+.pqm-qr-wrap svg {
+  border-radius: 10px;
+  padding: 8px;
+  background: #ffffff;
+  display: block;
 }
 
-.pass-qr-modal-event {
+.pqm-scan-hint {
+  font-size: 0.6rem;
+  color: #52525b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+/* status bar */
+.pqm-status {
+  padding: 8px 20px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+  border-top: 1px solid #27272a;
+}
+
+.pqm-status-in      { color: #4ade80; background: rgba(74,222,128,0.06); }
+.pqm-status-pending { color: #facc15; background: rgba(250,204,21,0.06); }
+
+/* actions row */
+.pqm-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.pqm-btn {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: var(--transition);
   white-space: nowrap;
 }
 
-.pass-qr-modal-name {
-  font-family: var(--font-heading);
-  font-size: 1.15rem;
-  font-weight: 800;
+.pqm-btn-copy {
+  background: var(--bg-hover);
   color: var(--text-main);
-  text-align: center;
 }
+.pqm-btn-copy:hover { border-color: var(--success); color: var(--success); }
 
-.pass-qr-modal-amount {
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.pass-qr-modal-qr-wrap {
-  margin: 10px 0 6px;
-  padding: 10px;
-  background: var(--bg-white);
-  border: 1.5px solid var(--border-color);
-  border-radius: 12px;
+.pqm-btn-open {
+  background: var(--bg-hover);
   color: var(--text-main);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
+.pqm-btn-open:hover { border-color: var(--primary); color: var(--primary); }
 
-.pass-qr-modal-code-row {
-  display: flex;
-  gap: 5px;
-  margin-top: 2px;
+.pqm-btn-download {
+  background: #6366f1;
+  color: #fff;
+  border-color: #6366f1;
 }
-
-.pass-qr-modal-hint {
-  font-size: 0.67rem;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-/* Action buttons row */
-.pass-qr-modal-actions {
-  display: flex;
-  gap: 8px;
-  padding: 14px 16px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.pass-qr-modal-actions .btn {
-  flex: 1;
-  justify-content: center;
-  min-width: 0;
-}
+.pqm-btn-download:hover { background: #4f46e5; border-color: #4f46e5; }

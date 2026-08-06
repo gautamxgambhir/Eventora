@@ -162,6 +162,8 @@ export default function PassView({ ticketCode }) {
                 <QRCodeDisplay
                   value={passUrl}
                   size={148}
+                  darkColor="#111113"
+                  lightColor="#ffffff"
                 />
               </div>
               <div className="pass-short-code">
