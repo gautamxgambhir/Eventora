@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import UserProfile from './UserProfile';
 import ValidateTab from './ValidateTab';
-import { QRCodeSVG } from 'qrcode.react';
+import QRCode from 'react-qr-code';
 import html2canvas from 'html2canvas';
 import { 
   Users, CheckCircle, Search, Filter, Plus, Download, 
@@ -2235,13 +2235,12 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                 <p className="pass-qr-modal-amount text-success">₹{parseFloat(g.amount_paid || 0).toFixed(2)} paid</p>
 
                 <div className="pass-qr-modal-qr-wrap">
-                  <QRCodeSVG
+                  <QRCode
                     value={passUrl}
                     size={160}
                     bgColor="transparent"
                     fgColor="currentColor"
                     level="M"
-                    includeMargin={false}
                   />
                 </div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { QRCodeSVG } from 'qrcode.react';
+import QRCode from 'react-qr-code';
 import { Sparkles, CheckCircle, XCircle, Download, AlertCircle } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
@@ -159,13 +159,12 @@ export default function PassView({ ticketCode }) {
             {/* QR + Code */}
             <div className="pass-qr-section">
               <div className="pass-qr-frame">
-                <QRCodeSVG
+                <QRCode
                   value={passUrl}
                   size={148}
                   bgColor="transparent"
                   fgColor="currentColor"
                   level="M"
-                  includeMargin={false}
                 />
               </div>
               <div className="pass-short-code">
