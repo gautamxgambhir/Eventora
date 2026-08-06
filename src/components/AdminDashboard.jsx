@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import UserProfile from './UserProfile';
+import ValidateTab from './ValidateTab';
+import { QRCodeSVG } from 'qrcode.react';
+import html2canvas from 'html2canvas';
 import { 
   Users, CheckCircle, Search, Filter, Plus, Download, 
   Trash2, X, RefreshCw, AlertCircle, FileSpreadsheet, Key, Calendar, 
   MapPin, LogOut, User as UserIcon, Copy, Check, Users2, Shield, Settings,
   Sparkles, Sun, Moon, Banknote, CreditCard, Image, ExternalLink, Upload,
-  Info, AlertTriangle, Pencil, Clock, History, ChevronDown, ChevronRight, UsersRound
+  Info, AlertTriangle, Pencil, Clock, History, ChevronDown, ChevronRight, UsersRound,
+  QrCode, Link, Send
 } from 'lucide-react';
 
 export default function AdminDashboard({ session, theme, toggleTheme }) {
@@ -64,6 +68,9 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
 
   // View screenshot modal
   const [viewScreenshotUrl, setViewScreenshotUrl] = useState(null);
+
+  // Pass QR modal — { guest }
+  const [passQrModal, setPassQrModal] = useState(null);
 
   // Edit guest modal
   const [showEditGuestModal, setShowEditGuestModal] = useState(false);
@@ -956,6 +963,13 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
             {passPrice !== undefined && passPrice !== null && (
               <span className="guest-pass-price">Type price: ₹{parseFloat(passPrice).toFixed(2)}</span>
             )}
+            <button
+              className="btn-pass-qr-trigger"
+              title="View pass QR & link"
+              onClick={() => setPassQrModal(guest)}
+            >
+              <QrCode size={13} /> Pass
+            </button>
           </div>
         </td>
         <td>
@@ -1168,7 +1182,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
             {selectedParty && (
               <>
                 <div className="mobile-drawer-section-label">Navigation</div>
-                {['Overview', 'Party Info', 'Admins', 'Passes', 'History', 'Settings'].map(tab => (
+                {['Overview', 'Party Info', 'Admins', 'Passes', 'Validate', 'History', 'Settings'].map(tab => (
                   <button
                     key={tab}
                     className={`mobile-drawer-item ${activeTab === tab ? 'mobile-drawer-item-active' : ''}`}
@@ -1258,7 +1272,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                   )}
                 </div>
                 <div className="sidebar-tabs">
-                  {['Overview', 'Party Info', 'Admins', 'Passes', 'History', 'Settings'].map((tab) => (
+                  {['Overview', 'Party Info', 'Admins', 'Passes', 'Validate', 'History', 'Settings'].map((tab) => (
                     <button
                       key={tab}
                       type="button"
@@ -1643,6 +1657,15 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                       </div>
                     )}
                   </div>
+                )}
+
+                {activeTab === 'Validate' && (
+                  <ValidateTab
+                    selectedParty={selectedParty}
+                    currentUser={currentUser}
+                    showToast={showToast}
+                    onGuestAdmitted={fetchGuests}
+                  />
                 )}
 
                 {activeTab === 'History' && (
@@ -2174,6 +2197,86 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
           </div>
         </div>
       )}
+
+      {/* ── Pass QR Modal ─────────────────────────────────────────────── */}
+      {passQrModal && (() => {
+        const g = passQrModal;
+        const passUrl = `${window.location.origin}/pass/${g.ticket_code}`;
+        const shortCode = g.ticket_code.includes('-') ? g.ticket_code.split('-').slice(1).join('-') : g.ticket_code;
+        const passTypeName = g.pass_type?.name || g.ticket_type || 'General';
+        const qrRef = React.createRef();
+
+        const downloadQr = async () => {
+          if (!qrRef.current) return;
+          try {
+            const canvas = await html2canvas(qrRef.current, { backgroundColor: null, scale: 3 });
+            const link = document.createElement('a');
+            link.download = `pass-${shortCode}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+          } catch (e) { console.error(e); }
+        };
+
+        return (
+          <div className="modal-overlay" onClick={() => setPassQrModal(null)}>
+            <div className="pass-qr-modal glass-panel" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3><QrCode size={16} style={{verticalAlign:'middle', marginRight:6}}/>Pass Card</h3>
+                <button className="btn-close-modal" onClick={() => setPassQrModal(null)}><X size={18} /></button>
+              </div>
+
+              {/* Mini pass card preview */}
+              <div className="pass-qr-modal-card" ref={qrRef}>
+                <div className="pass-qr-modal-header">
+                  <span className="pass-qr-modal-event">{selectedParty?.name}</span>
+                  <span className="badge badge-neutral" style={{fontSize:'0.7rem'}}>{passTypeName}</span>
+                </div>
+                <p className="pass-qr-modal-name">{g.name}</p>
+                <p className="pass-qr-modal-amount text-success">₹{parseFloat(g.amount_paid || 0).toFixed(2)} paid</p>
+
+                <div className="pass-qr-modal-qr-wrap">
+                  <QRCodeSVG
+                    value={passUrl}
+                    size={160}
+                    bgColor="transparent"
+                    fgColor="currentColor"
+                    level="M"
+                    includeMargin={false}
+                  />
+                </div>
+
+                <div className="pass-qr-modal-code-row">
+                  {shortCode.split('').map((ch, i) => (
+                    <span key={i} className="code-char">{ch}</span>
+                  ))}
+                </div>
+                <p className="pass-qr-modal-hint">Show QR or read code at entry</p>
+              </div>
+
+              {/* Action buttons */}
+              <div className="pass-qr-modal-actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => { navigator.clipboard.writeText(passUrl); showToast('Pass link copied!', 'success'); }}
+                >
+                  <Copy size={14} /> Copy Link
+                </button>
+                <a
+                  href={passUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary"
+                >
+                  <ExternalLink size={14} /> Open Pass
+                </a>
+                <button className="btn btn-primary" onClick={downloadQr}>
+                  <Download size={14} /> Download QR
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Bulk Guests Modal ──────────────────────────────────────────── */}
       {showBulkModal && (

@@ -2529,3 +2529,784 @@ button, .btn {
   padding: 8px 10px;
   font-size: 0.83rem;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PASS VIEW  (public guest-facing page: /pass/:ticketCode)
+═══════════════════════════════════════════════════════════════ */
+
+.pass-view-root {
+  min-height: 100vh;
+  background: var(--bg-light);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 16px 48px;
+  font-family: var(--font-body);
+}
+
+.pass-view-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 32px;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.pass-view-loading,
+.pass-view-error-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 80px;
+  text-align: center;
+}
+
+.pass-view-error-card h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.pass-view-error-card p {
+  color: var(--text-muted);
+}
+
+/* Spinner ring */
+.spinner-ring {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Pass card container */
+.pass-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* The card itself */
+.pass-card {
+  width: 100%;
+  background: var(--bg-white);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+}
+
+/* Admitted ribbon */
+.pass-admitted-ribbon {
+  position: absolute;
+  top: 14px;
+  right: -28px;
+  background: var(--success);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 4px 36px;
+  transform: rotate(40deg);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 2;
+}
+
+/* Card header */
+.pass-card-header {
+  padding: 28px 24px 20px;
+  background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+  color: #fff;
+}
+
+.pass-event-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.pass-party-name {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-top: 4px;
+  line-height: 1.2;
+}
+
+.pass-party-meta {
+  font-size: 0.82rem;
+  opacity: 0.85;
+  margin-top: 4px;
+}
+
+/* Tear divider */
+.pass-card-divider {
+  display: flex;
+  align-items: center;
+  position: relative;
+  height: 0;
+  overflow: visible;
+}
+
+.pass-divider-line {
+  flex: 1;
+  border-top: 2px dashed var(--border-color);
+  margin: 0 8px;
+}
+
+.pass-divider-notch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-light);
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.pass-divider-notch.left  { margin-left: -10px; }
+.pass-divider-notch.right { margin-right: -10px; }
+
+/* Card body */
+.pass-card-body {
+  display: flex;
+  gap: 20px;
+  padding: 20px 24px;
+  align-items: flex-start;
+}
+
+.pass-guest-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pass-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pass-field-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pass-field-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.pass-type-badge {
+  display: inline-block;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  width: fit-content;
+}
+
+/* QR section */
+.pass-qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.pass-qr-frame {
+  width: 164px;
+  height: 164px;
+  background: var(--bg-white);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  color: var(--text-main);
+}
+
+/* 6-char code display */
+.pass-short-code {
+  display: flex;
+  gap: 5px;
+}
+
+.code-char {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 32px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: 0;
+}
+
+.pass-code-hint {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 160px;
+}
+
+/* Status footer */
+.pass-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 24px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-top: 1px solid var(--border-color);
+}
+
+.footer-admitted {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.footer-pending {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.pass-download-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.pass-view-footer-note {
+  margin-top: 24px;
+  font-size: 0.72rem;
+  color: var(--text-light);
+  text-align: center;
+}
+
+/* Responsive: stack on small screens */
+@media (max-width: 480px) {
+  .pass-card-body {
+    flex-direction: column;
+    align-items: center;
+  }
+  .pass-guest-info {
+    width: 100%;
+  }
+  .pass-qr-section {
+    width: 100%;
+    align-items: center;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   VALIDATE TAB  (admin guest validation panel)
+═══════════════════════════════════════════════════════════════ */
+
+.validate-tab-root {
+  padding: 24px;
+  border-radius: 16px;
+}
+
+.validate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.validate-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.validate-header-left h2 {
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+/* Mode toggle */
+.validate-mode-toggle {
+  display: flex;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.validate-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.validate-mode-btn.mode-active {
+  background: var(--bg-white);
+  color: var(--text-main);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Code entry panel */
+.validate-code-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.validate-hint {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+}
+
+.validate-code-form {
+  width: 100%;
+}
+
+.validate-code-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.validate-code-input {
+  flex: 1;
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Feedback banners */
+.validate-feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.validate-feedback-error {
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+/* Result card */
+.validate-result-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-hover);
+  flex-wrap: wrap;
+}
+
+.validate-result-card.result-admitted {
+  border-color: var(--success);
+  background: var(--success-light);
+}
+
+.validate-result-card.result-pending {
+  border-color: var(--warning);
+  background: var(--warning-light);
+}
+
+.result-status-icon {
+  flex-shrink: 0;
+}
+
+.result-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 140px;
+}
+
+.result-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.result-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.result-code {
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: var(--bg-white);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.result-amount {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.result-time {
+  font-size: 0.75rem;
+}
+
+.result-actions {
+  flex-shrink: 0;
+}
+
+.btn-admit {
+  white-space: nowrap;
+}
+
+/* Scanner panel */
+.validate-scanner-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.scanner-container {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+  border: 2px solid var(--border-color);
+}
+
+/* Override html5-qrcode's inline styles */
+.scanner-viewport {
+  width: 100% !important;
+}
+
+.scanner-viewport video {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
+/* Loading overlay shown before camera starts */
+.scanner-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+/* Corner frame overlay */
+.scanner-target-frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px;
+  height: 200px;
+  pointer-events: none;
+}
+
+.scanner-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #fff;
+  border-style: solid;
+}
+
+.scanner-corner.tl { top: 0; left: 0;  border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.scanner-corner.tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.scanner-corner.bl { bottom: 0; left: 0;  border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.scanner-corner.br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+.scanner-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.scanner-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+/* ── Admission modal ───────────────────────────────────────── */
+.admit-modal {
+  position: relative;
+  width: 90%;
+  max-width: 360px;
+  border-radius: 20px;
+  padding: 36px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  animation: popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes popIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.admit-modal-success {
+  border: 2px solid var(--success);
+}
+
+.admit-modal-revoke {
+  border: 2px solid var(--danger);
+}
+
+.admit-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.admit-modal-icon {
+  margin-bottom: 4px;
+}
+
+.admit-modal-title {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.admit-modal-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.admit-modal-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.admit-modal-code {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  padding: 2px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--border-color);
+}
+
+.admit-modal-warning {
+  font-size: 0.8rem;
+  color: var(--warning);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.admit-modal-time {
+  font-size: 0.8rem;
+}
+
+.admit-modal-done {
+  margin-top: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PASS QR TRIGGER BUTTON  (inline in Tier/Code cell)
+═══════════════════════════════════════════════════════════════ */
+
+.btn-pass-qr-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.btn-pass-qr-trigger:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PASS QR MODAL
+═══════════════════════════════════════════════════════════════ */
+
+.pass-qr-modal {
+  width: 90%;
+  max-width: 320px;
+  border-radius: 18px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mini pass card inside the modal */
+.pass-qr-modal-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 20px 16px;
+  background: var(--bg-hover);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.pass-qr-modal-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.pass-qr-modal-event {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pass-qr-modal-name {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-main);
+  text-align: center;
+}
+
+.pass-qr-modal-amount {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.pass-qr-modal-qr-wrap {
+  margin: 10px 0 6px;
+  padding: 10px;
+  background: var(--bg-white);
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pass-qr-modal-code-row {
+  display: flex;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.pass-qr-modal-hint {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Action buttons row */
+.pass-qr-modal-actions {
+  display: flex;
+  gap: 8px;
+  padding: 14px 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.pass-qr-modal-actions .btn {
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}

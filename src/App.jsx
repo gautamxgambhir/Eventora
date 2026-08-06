@@ -3,7 +3,15 @@ import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import Auth from './components/Auth';
 import AdminDashboard from './components/AdminDashboard';
+import PassView from './components/PassView';
 import { RefreshCw } from 'lucide-react';
+
+// Minimal client-side router — no react-router dependency needed
+function getPassCodeFromUrl() {
+  const path = window.location.pathname; // e.g. /pass/EVT-ABC123
+  const match = path.match(/^\/pass\/([^/]+)$/);
+  return match ? match[1] : null;
+}
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -18,28 +26,32 @@ export default function App() {
   });
 
   useEffect(() => {
-    // Set theme on mount + whenever it changes.
-    // (Keeps React lint happy; avoids direct DOM mutation during render.)
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('eventora_theme', theme);
   }, [theme]);
 
-
-
   useEffect(() => {
-    // Fetch active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
 
-    // Listen to authentication changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Check if this is a public pass link — render without auth check
+  const passCode = getPassCodeFromUrl();
+  if (passCode) {
+    return (
+      <div className="app-root" data-theme={theme}>
+        <PassView ticketCode={passCode} />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
