@@ -15,8 +15,9 @@ import {
 
 // ── PassQrModal — proper component so hooks work correctly ──────────────────
 function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
-  const cardRef = useRef(null);
+  const dlCardRef = useRef(null); // hidden gold card — captured for download
   const [copied, setCopiedLocal] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const ticketCode  = guest?.ticket_code || '';
   const passUrl     = `${window.location.origin}/pass/${ticketCode}`;
@@ -24,6 +25,11 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
     ? ticketCode.split('-').slice(1).join('-')
     : ticketCode;
   const passTypeName = guest.pass_type?.name || guest.ticket_type || 'General';
+  const amountPaid   = parseFloat(guest.amount_paid || 0).toFixed(2);
+  const partyDate    = guest.party?.date
+    ? new Date(guest.party.date + 'T00:00:00').toLocaleDateString(undefined, { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+    : '';
+  const partyLocation = guest.party?.location || '';
 
   const handleCopy = () => {
     onCopyLink(passUrl);
@@ -32,10 +38,11 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
   };
 
   const downloadQr = async () => {
-    if (!cardRef.current) return;
+    if (!dlCardRef.current) return;
+    setDownloading(true);
     try {
-      const canvas = await html2canvas(cardRef.current, {
-        backgroundColor: '#111113',
+      const canvas = await html2canvas(dlCardRef.current, {
+        backgroundColor: '#0a0a0a',
         scale: 3,
         useCORS: true,
         logging: false,
@@ -46,6 +53,7 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (e) { console.error(e); }
+    finally { setDownloading(false); }
   };
 
   return (
@@ -63,17 +71,15 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
           </button>
         </div>
 
-        {/* ── Card (captured for download) ── */}
-        <div className="pqm-card" ref={cardRef}>
+        {/* ── Visible preview card (dark/indigo) ── */}
+        <div className="pqm-card">
           <div className="pqm-card-strip" />
-
           <div className="pqm-card-body">
-            {/* left: guest info */}
             <div className="pqm-info">
               <span className="pqm-party">{partyName}</span>
               <h2 className="pqm-name">{guest.name}</h2>
               <span className="pqm-type-badge">{passTypeName}</span>
-              <span className="pqm-amount">₹{parseFloat(guest.amount_paid || 0).toFixed(2)}</span>
+              <span className="pqm-amount">₹{amountPaid}</span>
               <span className="pqm-amount-label">Amount Paid</span>
               <div className="pqm-code-row">
                 {shortCode.split('').map((ch, i) => (
@@ -82,21 +88,69 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
               </div>
               <span className="pqm-code-hint">Entry code</span>
             </div>
-
-            {/* right: QR */}
             <div className="pqm-qr-wrap">
-              <QRCodeDisplay
-                value={passUrl}
-                size={140}
-                darkColor="#111113"
-                lightColor="#ffffff"
-              />
+              <QRCodeDisplay value={passUrl} size={140} darkColor="#111113" lightColor="#ffffff" />
               <span className="pqm-scan-hint">Scan to verify</span>
             </div>
           </div>
-
           <div className={`pqm-status ${guest.checked_in ? 'pqm-status-in' : 'pqm-status-pending'}`}>
             {guest.checked_in ? '✓ Admitted' : '○ Not Yet Admitted'}
+          </div>
+        </div>
+
+        {/* ── Hidden gold marble card — captured for download ── */}
+        <div style={{ position:'fixed', left:'-9999px', top:0, pointerEvents:'none', zIndex:-1 }}>
+          <div ref={dlCardRef} className="pv-card" style={{ width: 400, borderRadius: 22, overflow:'hidden', background:'#111010', border:'1.5px solid #7a5c1e' }}>
+            <div className="pv-marble-overlay" />
+            <div className="pv-header">
+              <div className="pv-header-top">
+                <span className="pv-event-label">EVENT PASS</span>
+                <span className="pv-pass-type-chip">{passTypeName}</span>
+              </div>
+              <h1 className="pv-party-name">{partyName}</h1>
+              {partyDate     && <p className="pv-meta-line">{partyDate}</p>}
+              {partyLocation && <p className="pv-meta-line">{partyLocation}</p>}
+            </div>
+            <div className="pv-tear">
+              <div className="pv-tear-notch left" />
+              <div className="pv-tear-line" />
+              <div className="pv-tear-notch right" />
+            </div>
+            <div className="pv-body">
+              <div className="pv-fields" style={{ minHeight: 'unset' }}>
+                <div className="pv-field">
+                  <span className="pv-field-label">Guest Name</span>
+                  <span className="pv-field-value">{guest.name}</span>
+                </div>
+                <div className="pv-field">
+                  <span className="pv-field-label">Amount Paid</span>
+                  <span className="pv-field-value pv-amount">₹{amountPaid}</span>
+                </div>
+                {guest.pass_type?.price != null && (
+                  <div className="pv-field">
+                    <span className="pv-field-label">Pass Price</span>
+                    <span className="pv-field-value">₹{parseFloat(guest.pass_type.price).toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="pv-field" style={{ paddingTop: 12 }}>
+                  <span className="pv-field-label">Entry Code</span>
+                  <div className="pv-code-row">
+                    {shortCode.split('').map((ch, i) => (
+                      <span key={i} className="pv-code-char">{ch}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="pv-qr-col">
+                <div className="pv-qr-box">
+                  <QRCodeDisplay value={passUrl} size={136} darkColor="#0a0a0a" lightColor="#ffffff" />
+                </div>
+                <span className="pv-qr-hint">Scan at entry</span>
+              </div>
+            </div>
+            <div className={`pv-footer ${guest.checked_in ? 'pv-footer-in' : 'pv-footer-pending'}`}>
+              {guest.checked_in ? '✓ Admitted' : '○ Not Yet Admitted — Present this pass at entry'}
+            </div>
           </div>
         </div>
 
@@ -109,8 +163,9 @@ function PassQrModal({ guest, partyName, onClose, onCopyLink }) {
           <a href={passUrl} target="_blank" rel="noopener noreferrer" className="pqm-btn pqm-btn-open">
             <ExternalLink size={14} /> Open Pass
           </a>
-          <button className="pqm-btn pqm-btn-download" onClick={downloadQr}>
-            <Download size={14} /> Download
+          <button className="pqm-btn pqm-btn-download" onClick={downloadQr} disabled={downloading}>
+            {downloading ? <RefreshCw size={14} className="spinner" /> : <Download size={14} />}
+            {downloading ? 'Saving…' : 'Download'}
           </button>
         </div>
       </div>
