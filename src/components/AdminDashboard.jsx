@@ -1355,7 +1355,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                     <p className="sidebar-current-party-label">Current Party</p>
                     <strong className="sidebar-current-party-name">{selectedParty.name}</strong>
                     <span className="sidebar-current-party-meta">
-                      {selectedParty.date} · {selectedParty.location || 'Venue not set'}
+                      {selectedParty.date ? new Date(selectedParty.date + 'T00:00:00').toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' }) : 'Date not set'} · {selectedParty.location || 'Venue not set'}
                     </span>
                   </div>
                   {parties.length > 1 && (
@@ -1444,7 +1444,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                   <div className="party-header-meta">
                     <h1 className="active-party-title">{selectedParty.name}</h1>
                     <div className="active-party-details-row">
-                      <span><Calendar size={14} /> {selectedParty.date}</span>
+                      <span><Calendar size={14} /> {selectedParty.date ? new Date(selectedParty.date + 'T00:00:00').toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short', year:'numeric' }) : 'Date not set'}</span>
                       {selectedParty.location && <span><MapPin size={14} /> {selectedParty.location}</span>}
                     </div>
                   </div>
@@ -1561,7 +1561,7 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                       </div>
                       <div className="party-info-card">
                         <span className="info-label">Event Date</span>
-                        <strong>{selectedParty.date}</strong>
+                        <strong>{selectedParty.date ? new Date(selectedParty.date + 'T00:00:00').toLocaleDateString(undefined, { weekday:'long', day:'numeric', month:'long', year:'numeric' }) : 'Not set'}</strong>
                       </div>
                       <div className="party-info-card">
                         <span className="info-label">Location</span>
@@ -1573,22 +1573,20 @@ export default function AdminDashboard({ session, theme, toggleTheme }) {
                       </div>
                     </div>
                     <p className="section-note">Organizers can choose pass types and prices while registering guests in the Passes tab. You can also change event details from the party settings area.</p>
-                    {selectedParty.role === 'Organizer' && (
-                      <button 
-                        type="button" 
-                        className="btn btn-secondary" 
-                        onClick={() => {
-                          setEditPartyName(selectedParty.name);
-                          setEditPartyDate(selectedParty.date);
-                          setEditPartyLoc(selectedParty.location || '');
-                          setShowEditPartyModal(true);
-                        }}
-                        style={{ marginTop: '20px' }}
-                      >
-                        <Settings size={16} />
-                        Edit Party Info
-                      </button>
-                    )}
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary" 
+                      onClick={() => {
+                        setEditPartyName(selectedParty.name);
+                        setEditPartyDate(selectedParty.date);
+                        setEditPartyLoc(selectedParty.location || '');
+                        setShowEditPartyModal(true);
+                      }}
+                      style={{ marginTop: '20px' }}
+                    >
+                      <Settings size={16} />
+                      Edit Party Info
+                    </button>
                   </div>
                 )}
 

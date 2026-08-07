@@ -2532,303 +2532,384 @@ button, .btn {
 
 
 /* ═══════════════════════════════════════════════════════════════
-   PASS VIEW  (public guest-facing page: /pass/:ticketCode)
+   PASS VIEW  — gold / black marble theme
 ═══════════════════════════════════════════════════════════════ */
 
-.pass-view-root {
+/* Page root */
+.pv-root {
   min-height: 100vh;
-  background: var(--bg-light);
+  background: #0a0a0a;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 16px 48px;
+  padding: 28px 16px 56px;
   font-family: var(--font-body);
 }
 
-.pass-view-topbar {
+/* Brand bar */
+.pv-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 32px;
+  gap: 7px;
+  margin-bottom: 28px;
   font-family: var(--font-heading);
-  font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #c9a84c;
 }
+.pv-brand-icon { color: #c9a84c; }
+.pv-brand-text { text-transform: uppercase; }
 
-.pass-view-loading,
-.pass-view-error-card {
+/* Loading */
+.pv-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
+  margin-top: 80px;
+  color: #c9a84c;
+  font-size: 0.9rem;
+}
+.pv-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(201,168,76,0.2);
+  border-top-color: #c9a84c;
+  border-radius: 50%;
+  animation: pv-spin 0.75s linear infinite;
+}
+@keyframes pv-spin { to { transform: rotate(360deg); } }
+
+/* Error card */
+.pv-error-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   margin-top: 80px;
   text-align: center;
+  color: #c9a84c;
+}
+.pv-error-card h2 { font-size: 1.2rem; font-weight: 700; color: #f4f4f5; }
+.pv-error-card p  { font-size: 0.85rem; color: #71717a; }
+
+/* Outer wrapper */
+.pv-card-outer {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
 }
 
-.pass-view-error-card h2 {
-  font-size: 1.3rem;
+/* ── The card ── */
+.pv-card {
+  position: relative;
+  width: 100%;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #111010;
+  /* Gold border */
+  border: 1.5px solid #7a5c1e;
+  box-shadow:
+    0 0 0 1px rgba(201,168,76,0.08),
+    0 20px 60px rgba(0,0,0,0.7),
+    0 2px 8px rgba(201,168,76,0.08);
+}
+
+/* Subtle marble noise texture via SVG data URI overlay */
+.pv-marble-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 300px 300px;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+/* Admitted ribbon */
+.pv-admitted-ribbon {
+  position: absolute;
+  top: 18px;
+  right: -30px;
+  background: linear-gradient(90deg, #b8860b, #f0c040, #b8860b);
+  color: #0a0a0a;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  padding: 5px 44px;
+  transform: rotate(40deg);
+  z-index: 3;
+}
+
+/* ── Header ── */
+.pv-header {
+  position: relative;
+  z-index: 1;
+  padding: 26px 22px 22px;
+  background: linear-gradient(145deg, #1a1500 0%, #0e0e0e 55%, #141004 100%);
+  border-bottom: 1px solid #3a2e0a;
+}
+
+.pv-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.pv-event-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #7a6020;
+}
+
+.pv-pass-type-chip {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: rgba(201,168,76,0.12);
+  color: #c9a84c;
+  border: 1px solid rgba(201,168,76,0.25);
+}
+
+.pv-party-name {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: #f5e6b0;
+  line-height: 1.15;
+  /* Gold gradient text */
+  background: linear-gradient(135deg, #f5e6b0 0%, #c9a84c 50%, #e8d080 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+
+.pv-meta-line {
+  font-size: 0.8rem;
+  color: #8a7840;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+/* ── Tear divider ── */
+.pv-tear {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  height: 0;
+  overflow: visible;
+}
+
+.pv-tear-line {
+  flex: 1;
+  border-top: 1.5px dashed #3a2e0a;
+  margin: 0 6px;
+}
+
+.pv-tear-notch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #0a0a0a;
+  border: 1.5px solid #3a2e0a;
+  flex-shrink: 0;
+  z-index: 2;
+}
+.pv-tear-notch.left  { margin-left: -9px; }
+.pv-tear-notch.right { margin-right: -9px; }
+
+/* ── Body ── */
+.pv-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 16px;
+  padding: 20px 22px 18px;
+  align-items: flex-start;
+}
+
+.pv-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 170px;
+}
+
+.pv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pv-field-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6b5a28;
+}
+
+.pv-field-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #e8d9a0;
+}
+
+.pv-amount {
+  font-size: 1.15rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #f5e6b0, #c9a84c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Entry code */
+.pv-code-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.pv-code-char {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 30px;
+  background: #1a1500;
+  border: 1px solid #3a2e0a;
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: #c9a84c;
+  letter-spacing: 0;
+}
+
+/* QR column */
+.pv-qr-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.pv-qr-box {
+  padding: 8px;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 2px solid #c9a84c;
+  box-shadow: 0 0 12px rgba(201,168,76,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pv-qr-hint {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6b5a28;
+}
+
+/* ── Footer ── */
+.pv-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 22px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-top: 1px solid #3a2e0a;
+}
+.pv-footer-in      { background: rgba(201,168,76,0.08); color: #c9a84c; }
+.pv-footer-pending { background: rgba(255,255,255,0.03); color: #6b5a28; }
+
+/* Download button */
+.pv-download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #3a2e0a;
+  background: #1a1500;
+  color: #c9a84c;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: 0.04em;
+}
+.pv-download-btn:hover:not(:disabled) {
+  background: #2a2000;
+  border-color: #c9a84c;
+  box-shadow: 0 0 12px rgba(201,168,76,0.15);
+}
+.pv-download-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Footnote */
+.pv-footnote {
+  margin-top: 20px;
+  font-size: 0.68rem;
+  color: #3a2e0a;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Responsive */
+@media (max-width: 440px) {
+  .pv-body { flex-direction: column; align-items: center; }
+  .pv-fields { width: 100%; min-height: auto; }
+  .pv-qr-col { width: 100%; align-items: center; }
+}
+
+/* code-char still used in pqm-modal — keep alias */
+.code-char {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 30px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.88rem;
   font-weight: 700;
   color: var(--text-main);
 }
 
-.pass-view-error-card p {
-  color: var(--text-muted);
-}
-
-/* Spinner ring */
+/* Spinner ring — still used in ValidateTab loading overlay */
 .spinner-ring {
   width: 36px;
   height: 36px;
   border: 3px solid var(--border-color);
   border-top-color: var(--primary);
   border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+  animation: pv-spin 0.7s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Pass card container */
-.pass-card-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  max-width: 400px;
-}
-
-/* The card itself */
-.pass-card {
-  width: 100%;
-  background: var(--bg-white);
-  border: 1px solid var(--border-color);
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
-  position: relative;
-}
-
-/* Admitted ribbon */
-.pass-admitted-ribbon {
-  position: absolute;
-  top: 14px;
-  right: -28px;
-  background: var(--success);
-  color: #fff;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  padding: 4px 36px;
-  transform: rotate(40deg);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  z-index: 2;
-}
-
-/* Card header */
-.pass-card-header {
-  padding: 28px 24px 20px;
-  background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
-  color: #fff;
-}
-
-.pass-event-label {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.8;
-}
-
-.pass-party-name {
-  font-family: var(--font-heading);
-  font-size: 1.5rem;
-  font-weight: 800;
-  margin-top: 4px;
-  line-height: 1.2;
-}
-
-.pass-party-meta {
-  font-size: 0.82rem;
-  opacity: 0.85;
-  margin-top: 4px;
-}
-
-/* Tear divider */
-.pass-card-divider {
-  display: flex;
-  align-items: center;
-  position: relative;
-  height: 0;
-  overflow: visible;
-}
-
-.pass-divider-line {
-  flex: 1;
-  border-top: 2px dashed var(--border-color);
-  margin: 0 8px;
-}
-
-.pass-divider-notch {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--bg-light);
-  border: 1px solid var(--border-color);
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-}
-
-.pass-divider-notch.left  { margin-left: -10px; }
-.pass-divider-notch.right { margin-right: -10px; }
-
-/* Card body */
-.pass-card-body {
-  display: flex;
-  gap: 20px;
-  padding: 20px 24px;
-  align-items: flex-start;
-}
-
-.pass-guest-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.pass-field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.pass-field-label {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.pass-field-value {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-main);
-}
-
-.pass-type-badge {
-  display: inline-block;
-  background: var(--primary-light);
-  color: var(--primary);
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  width: fit-content;
-}
-
-/* QR section */
-.pass-qr-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.pass-qr-frame {
-  width: 164px;
-  height: 164px;
-  background: var(--bg-white);
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  color: var(--text-main);
-}
-
-/* 6-char code display */
-.pass-short-code {
-  display: flex;
-  gap: 5px;
-}
-
-.code-char {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 32px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text-main);
-  letter-spacing: 0;
-}
-
-.pass-code-hint {
-  font-size: 0.67rem;
-  color: var(--text-muted);
-  text-align: center;
-  max-width: 160px;
-}
-
-/* Status footer */
-.pass-card-footer {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 12px 24px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-top: 1px solid var(--border-color);
-}
-
-.footer-admitted {
-  background: var(--success-light);
-  color: var(--success);
-}
-
-.footer-pending {
-  background: var(--warning-light);
-  color: var(--warning);
-}
-
-.pass-download-btn {
-  width: 100%;
-  justify-content: center;
-}
-
-.pass-view-footer-note {
-  margin-top: 24px;
-  font-size: 0.72rem;
-  color: var(--text-light);
-  text-align: center;
-}
-
-/* Responsive: stack on small screens */
-@media (max-width: 480px) {
-  .pass-card-body {
-    flex-direction: column;
-    align-items: center;
-  }
-  .pass-guest-info {
-    width: 100%;
-  }
-  .pass-qr-section {
-    width: 100%;
-    align-items: center;
-  }
-}
-
 
 /* ═══════════════════════════════════════════════════════════════
    VALIDATE TAB  (admin guest validation panel)
