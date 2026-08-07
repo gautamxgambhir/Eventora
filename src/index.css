@@ -2619,12 +2619,13 @@ button, .btn {
     0 2px 8px rgba(201,168,76,0.08);
 }
 
-/* Subtle marble noise texture via SVG data URI overlay */
+/* Subtle vein lines instead of SVG noise — renders correctly in html2canvas */
 .pv-marble-overlay {
   position: absolute;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-  background-size: 300px 300px;
+  background:
+    linear-gradient(135deg, rgba(201,168,76,0.04) 0%, transparent 50%),
+    linear-gradient(225deg, rgba(201,168,76,0.03) 0%, transparent 60%);
   pointer-events: none;
   z-index: 0;
   border-radius: inherit;
@@ -2685,13 +2686,8 @@ button, .btn {
   font-family: var(--font-heading);
   font-size: 1.75rem;
   font-weight: 900;
-  color: #f5e6b0;
+  color: #e8c96a;
   line-height: 1.15;
-  /* Gold gradient text */
-  background: linear-gradient(135deg, #f5e6b0 0%, #c9a84c 50%, #e8d080 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   margin-bottom: 6px;
 }
 
@@ -2771,10 +2767,7 @@ button, .btn {
 .pv-amount {
   font-size: 1.15rem;
   font-weight: 800;
-  background: linear-gradient(90deg, #f5e6b0, #c9a84c);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #c9a84c;
 }
 
 /* Entry code */
